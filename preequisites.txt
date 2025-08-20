@@ -1,0 +1,101 @@
+## Ideal Asnwer
+
+perfect_learning_flow = [
+  // TIER 1: FOUNDATIONAL (Perfect as-is)
+  {'code': 'MS01', 'name': 'Whole-number operations & order of operations'},
+  {'code': 'MS02', 'name': 'Prime factors, GCF & LCM'},
+  {'code': 'QC03', 'name': 'GCF & LCM Reasoning'},
+  {'code': 'MS03', 'name': 'Integer operations & absolute value'},
+  {'code': 'QC01', 'name': 'Signed Integers & Absolute Value'},
+  
+  // TIER 2: NUMBER SYSTEMS (Perfect as-is)
+  {'code': 'MS04', 'name': 'Fraction & mixed-number operations'},
+  {'code': 'QC02', 'name': 'Fractions & Mixed Numbers'},
+  {'code': 'MS05', 'name': 'Decimal & percent reasoning'},
+  {'code': 'QC04', 'name': 'Decimals & Percents'},
+  
+  // TIER 3: PROPORTIONAL REASONING (Perfect as-is)
+  {'code': 'MS06', 'name': 'Ratios, unit rates, scale drawings & proportions'},
+  {'code': 'QC05', 'name': 'Ratios & Unit Rates'},
+  
+  // TIER 4: EXPONENTIAL (Perfect as-is)
+  {'code': 'MS07', 'name': 'Exponents, squares & square roots'},
+  {'code': 'QC06', 'name': 'Exponents & Roots'},
+  {'code': 'QC19', 'name': 'Scientific Notation & Order of Magnitude'}, // MOVED UP
+  
+  // TIER 5: ALGEBRAIC BASIC (Perfect as-is)
+  {'code': 'MS08', 'name': 'Evaluating & simplifying algebraic expressions'},
+  {'code': 'QC07a', 'name': 'Variable Expressions (Fixed Order)'},
+  {'code': 'QC07b', 'name': 'Variable Expressions (Indeterminate)'},
+  
+  // TIER 6: ALGEBRAIC ADVANCED (Fixed coordinate order)
+  {'code': 'MS09', 'name': 'One-variable linear equations & inequalities'},
+  {'code': 'MS10', 'name': 'Coordinate-plane basics'}, // MOVED AFTER equations
+  {'code': 'QC13', 'name': 'Coordinate Plane Slope & Distance'}, // MOVED UP
+  {'code': 'MS11', 'name': 'Patterns, sequences & basic function rules'},
+  {'code': 'QC08', 'name': 'Sequences & Patterns'},
+  
+  // TIER 7: GEOMETRIC (Fixed angle positioning)
+  {'code': 'MS12', 'name': 'Angle relationships & polygon properties'},
+  {'code': 'QC09', 'name': 'Angle & Segment Relations'}, // MOVED UP
+  {'code': 'MS13', 'name': 'Perimeter, area & circumference of 2-D shapes'},
+  {'code': 'QC11', 'name': 'Area & Perimeter Reasoning'}, // MOVED UP
+  {'code': 'QC12', 'name': 'Circle Measures'},
+  {'code': 'QC10', 'name': 'Similar Figures & Scale'}, // Moved after area concepts
+  {'code': 'MS14', 'name': 'Surface area & volume of 3-D solids'},
+  {'code': 'QC16', 'name': 'Volume & Surface Area'},
+  
+  // TIER 8: MEASUREMENT (Perfect as-is)
+  {'code': 'MS16', 'name': 'Measurement units, tools & conversions'},
+  {'code': 'QC14', 'name': 'Unit Conversion'},
+  {'code': 'QC15', 'name': 'Rate/Time/Distance & Density'},
+  
+  // TIER 9: DATA ANALYSIS (Perfect as-is)
+  {'code': 'MS17', 'name': 'Data representation & statistics'},
+  {'code': 'QC17', 'name': 'Data Displays & Central Tendency'},
+  {'code': 'MS18', 'name': 'Probability of simple & compound events'},
+  {'code': 'QC18', 'name': 'Probability Comparisons'}
+]
+
+
+## my prediction
+
+learning_flow = [
+    {'code': 'MS01', 'name': 'Whole-number operations & order of operations'},
+    {'code': 'MS02', 'name': 'Prime factors, GCF & LCM'},
+    {'code': 'MS03', 'name': 'Integer operations & absolute value'},
+    {'code': 'QC03', 'name': 'GCF & LCM Reasoning'},
+    {'code': 'QC01', 'name': 'Signed Integers & Absolute Value'},
+    {'code': 'MS04', 'name': 'Fraction & mixed-number operations'},
+    {'code': 'QC02', 'name': 'Fractions & Mixed Numbers'},
+    {'code': 'MS05', 'name': 'Decimal & percent reasoning'},
+    {'code': 'QC04', 'name': 'Decimals & Percents'},
+    {'code': 'MS06', 'name': 'Ratios, unit rates, scale drawings & proportions'},
+    {'code': 'QC05', 'name': 'Ratios & Unit Rates'},
+    {'code': 'MS07', 'name': 'Exponents, squares & square roots'},
+    {'code': 'QC06', 'name': 'Exponents & Roots'},
+    {'code': 'MS08', 'name': 'Evaluating & simplifying algebraic expressions'},
+    {'code': 'QC07a', 'name': 'Variable Expressions (Fixed Order)'},
+    {'code': 'QC07b', 'name': 'Variable Expressions (Indeterminate)'},
+    {'code': 'MS10', 'name': 'Coordinate-plane basics'},
+    {'code': 'MS09', 'name': 'One-variable linear equations & inequalities'},
+    {'code': 'MS11', 'name': 'Patterns, sequences & basic function rules'},
+    {'code': 'QC08', 'name': 'Sequences & Patterns'},
+    {'code': 'MS12', 'name': 'Angle relationships & polygon properties'},
+    {'code': 'QC10', 'name': 'Similar Figures & Scale'},
+    {'code': 'MS13', 'name': 'Perimeter, area & circumference of 2-D shapes'},
+    {'code': 'MS14', 'name': 'Surface area & volume of 3-D solids'},
+    {'code': 'QC16', 'name': 'Volume & Surface Area'},
+    {'code': 'QC09', 'name': 'Angle & Segment Relations'},
+    {'code': 'QC12', 'name': 'Circle Measures'},
+    {'code': 'QC11', 'name': 'Area & Perimeter Reasoning'},
+    {'code': 'MS16', 'name': 'Measurement units, tools & conversions'},
+    {'code': 'QC14', 'name': 'Unit Conversion'},
+    {'code': 'QC15', 'name': 'Rate/Time/Distance & Density'},
+    {'code': 'MS17', 'name': 'Data representation & statistics'},
+    {'code': 'MS18', 'name': 'Probability of simple & compound events'},
+    {'code': 'QC17', 'name': 'Data Displays & Central Tendency'},
+    {'code': 'QC18', 'name': 'Probability Comparisons'},
+    {'code': 'QC19', 'name': 'Scientific Notation & Order of Magnitude'},
+    {'code': 'QC13', 'name': 'Coordinate Plane Slope & Distance'}
+]

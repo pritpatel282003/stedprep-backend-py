@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+motor
+pydantic
+python-dotenv
+girth
+python-multipart
+scikit-learn
+pyirt
+sentence-transformers
