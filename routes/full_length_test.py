@@ -1,3 +1,5 @@
+# routes/full_length_test.py
+
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional, Dict, Any, List
 from datetime import datetime
@@ -6,18 +8,29 @@ from models.models import IndexGradeRequest
 from student_Dashboard.full_length import build_full_length_test, SECTION_ORDER_DEFAULT
 from pydantic import BaseModel
 
+# Create a new router for full-length test endpoints
 router = APIRouter(prefix="/full-length-test", tags=["full_length_test"])
 
 
 @router.post("/create")
-async def create_full_length_test(student_id: str, day: Optional[int] = None, db = Depends(get_db)):
+async def create_full_length_test(student_id: str, day: Optional[int] = None, db=Depends(get_db)):
+    """
+    Creates a new full-length test for a student.
+
+    This endpoint builds a full-length test with multiple sections,
+    persists it to the database, and returns the test ID and metadata.
+    """
     try:
+        # Validate student ID
         if not student_id.strip():
             raise HTTPException(status_code=400, detail="student_id cannot be empty")
-        # Build and persist
+
+        # Build the full-length test and persist it to the database
         sections = build_full_length_test(db)
         import uuid
         test_id = str(uuid.uuid4())
+
+        # Prepare metadata for each section
         sections_meta = [
             {
                 "section": s.get("section"),
@@ -26,6 +39,8 @@ async def create_full_length_test(student_id: str, day: Optional[int] = None, db
             }
             for s in sections
         ]
+
+        # Insert the new test into the database
         db.client[db.database_name]["full_length_tests"].insert_one({
             "test_id": test_id,
             "type": "full_length",
@@ -36,6 +51,8 @@ async def create_full_length_test(student_id: str, day: Optional[int] = None, db
             "sections_meta": sections_meta,
             "packet": sections
         })
+
+        # Return the test details
         return {
             "success": True,
             "student_id": student_id,
@@ -55,29 +72,38 @@ async def get_full_length_test(
     page: int = 1,
     page_size: int = 1,
     test_id: Optional[str] = None,
-    db = Depends(get_db)
+    db=Depends(get_db)
 ):
-    """Return full-length test sections paginated by section, default one section per page.
+    """
+    Retrieves a full-length test, paginated by section.
 
-    Frontend can request page=1 (first section), page=2 (next section), etc.
-    Each page returns one section packet with up to 25 questions.
+    This endpoint returns the sections of a full-length test, one section per page by default.
+    The frontend can request subsequent sections by incrementing the page number.
     """
     try:
+        # Validate student ID
         if not student_id.strip():
             raise HTTPException(status_code=400, detail="student_id cannot be empty")
+
         page = max(1, int(page))
         page_size = max(1, int(page_size))
 
+        # If a test ID is provided, retrieve the specific test from the database
         if test_id:
             doc = db.client[db.database_name]["full_length_tests"].find_one({"test_id": test_id, "student_id": student_id})
             if not doc:
                 raise HTTPException(status_code=404, detail="full-length test not found for given test_id and student_id")
             all_sections = doc.get("packet", [])
         else:
+            # If no test ID is provided, build a new test
             all_sections = build_full_length_test(db)
+
+        # Paginate the sections
         total_sections = len(all_sections)
         start_idx = (page - 1) * page_size
         end_idx = min(start_idx + page_size, total_sections)
+
+        # Handle cases where the page number is out of bounds
         if start_idx >= total_sections:
             return {
                 "success": True,
@@ -90,6 +116,7 @@ async def get_full_length_test(
                 "page_size": page_size
             }
 
+        # Return the paginated sections
         page_sections = all_sections[start_idx:end_idx]
         return {
             "success": True,
@@ -111,23 +138,29 @@ async def get_full_length_test(
 
 @router.post("/grade-old-disabled")
 async def grade_full_length_test_disabled():
-    # This endpoint is intentionally disabled in favor of index-based grading
+    """
+    This endpoint is intentionally disabled in favor of index-based grading.
+    """
     raise HTTPException(status_code=410, detail="Deprecated. Use /full-length-test/grade/indexed")
 
 
-
-
-
 @router.post("/grade")
-async def grade_full_length_test_indexed(payload: IndexGradeRequest, db = Depends(get_db)):
+async def grade_full_length_test_indexed(payload: IndexGradeRequest, db=Depends(get_db)):
+    """
+    Grades a full-length test based on an indexed list of answers.
+
+    This endpoint processes the student's answers, calculates their performance,
+    updates their mastery data, and regenerates their study plan based on the results.
+    """
     try:
+        # Retrieve the test from the database
         tests_col = db.client[db.database_name]["full_length_tests"]
         test_doc = tests_col.find_one({"test_id": payload.test_id})
         if not test_doc:
             raise HTTPException(status_code=404, detail="full-length test not found for given test_id and student_id")
         student_id = test_doc.get("student_id") or ""
 
-        # Build ordered list of question_ids across all sections in fixed order
+        # Build an ordered list of question IDs for the test
         ordered_qids: List[str] = []
         sections_meta = test_doc.get("sections_meta", []) or []
         section_to_qids = {str(s.get("section")).lower(): [str(q) for q in (s.get("question_ids") or []) if q] for s in sections_meta}
@@ -141,19 +174,20 @@ async def grade_full_length_test_indexed(payload: IndexGradeRequest, db = Depend
             if key not in seen:
                 ordered_qids.extend(qids)
 
-        # Enforce full-test grading: answers length must match
+        # Ensure the number of answers matches the number of questions
         if len(payload.answers) != len(ordered_qids):
             raise HTTPException(status_code=400, detail=f"answers length must be {len(ordered_qids)} to grade the full test")
 
+        # Helper function to normalize answer strings
         def normalize(val: Any) -> str:
             try:
                 return str(val).strip().lower()
             except Exception:
                 return ""
 
+        # Grade each question
         question_results = []
         per_topic: Dict[str, Dict[str, Any]] = {}
-
         for idx in range(len(ordered_qids)):
             qid = ordered_qids[idx]
             selected_raw = payload.answers[idx] or ""
@@ -161,12 +195,16 @@ async def grade_full_length_test_indexed(payload: IndexGradeRequest, db = Depend
             if not item:
                 question_results.append({"question_id": qid, "is_correct": False, "error": "Question not found in item_bank"})
                 continue
+
+            # Check if the answer is correct
             correct_option = item.get("correctOption")
             correct_answer = item.get("correctAnswer", correct_option)
             user_answer_norm = normalize(selected_raw)
             skipped = (user_answer_norm == "")
             correct_norm = normalize(correct_answer)
             is_correct = (user_answer_norm == correct_norm) if (not skipped and correct_norm) else False
+
+            # Store the result for each question
             topic_code = (item.get("skillCode") or "").strip()
             topic_name = item.get("topic") or item.get("skillDescription") or item.get("section") or "Unknown"
             question_results.append({
@@ -179,13 +217,15 @@ async def grade_full_length_test_indexed(payload: IndexGradeRequest, db = Depend
                 "is_correct": is_correct,
                 "skipped": skipped
             })
+
+            # Aggregate results by topic
             if topic_code:
                 stats = per_topic.setdefault(topic_code, {"correct": 0, "total": 0, "topic": topic_name})
                 stats["total"] += 1
                 if is_correct:
                     stats["correct"] += 1
 
-        # Update studentSummary identical to other graders
+        # Update the student's summary with the new mastery data
         if per_topic and student_id:
             collection = db.client[db.database_name]["studentSummary"]
             now_ts = datetime.now()
@@ -207,6 +247,7 @@ async def grade_full_length_test_indexed(payload: IndexGradeRequest, db = Depend
                 update_fields[f"{path}.assessment_type"] = "assessed"
             collection.update_one({"student_id": student_id}, {"$set": update_fields, "$setOnInsert": set_on_insert}, upsert=True)
 
+        # Regenerate the study plan based on the test results
         expected_count = len(ordered_qids)
         skipped_count = sum(1 for d in question_results if d.get("skipped"))
         plan_regenerated = False
@@ -222,6 +263,8 @@ async def grade_full_length_test_indexed(payload: IndexGradeRequest, db = Depend
                 if plan_duration_days <= 0:
                     plan_duration_days = 15
             daily_time_minutes_used = current_plan.get("daily_time_minutes", 60) if current_plan else 60
+
+            # Adjust study plan based on performance in each topic
             recent_adjustments: Dict[str, Dict[str, Any]] = {}
             for code, stats in per_topic.items():
                 accuracy = (stats["correct"] / stats["total"]) * 100 if stats["total"] > 0 else 0.0
@@ -231,6 +274,8 @@ async def grade_full_length_test_indexed(payload: IndexGradeRequest, db = Depend
                     recent_adjustments[code] = {"questions_delta": 0, "force_difficulty": "Medium"}
                 else:
                     recent_adjustments[code] = {"questions_delta": +2, "force_difficulty": "Easy"}
+
+            # Generate and save the new study plan
             from student_Dashboard import study_plan_logic
             engine = study_plan_logic.AdaptiveStudyPlanEngine(db)
             fresh_plan = engine.generate_study_plan(
@@ -246,6 +291,7 @@ async def grade_full_length_test_indexed(payload: IndexGradeRequest, db = Depend
         except Exception:
             plan_regenerated = False
 
+        # Update the test document with the grading results
         tests_col.update_one(
             {"_id": test_doc["_id"]},
             {"$set": {
@@ -265,6 +311,7 @@ async def grade_full_length_test_indexed(payload: IndexGradeRequest, db = Depend
             }}
         )
 
+        # Return the grading results
         return {
             "success": True,
             "student_id": student_id,

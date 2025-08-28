@@ -1,10 +1,16 @@
+# student_Dashboard/study_plan_logic.py
+
 import math
 from typing import List, Dict, Any, Tuple, Optional
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 from enum import Enum
 
-# Perfect Learning Flow - Sequential order with prerequisites
+# This script defines the core logic for generating adaptive study plans.
+# It includes the definition of the learning flow, prerequisites, and the main
+# engine for creating, managing, and updating study plans.
+
+# Defines the perfect learning flow in a sequential order with tiers.
 PERFECT_LEARNING_FLOW = [
     # TIER 1: FOUNDATIONAL
     {'code': 'MS01', 'name': 'Whole-number operations & order of operations', 'tier': 1},
@@ -62,7 +68,7 @@ PERFECT_LEARNING_FLOW = [
     {'code': 'QC18', 'name': 'Probability Comparisons', 'tier': 9}
 ]
 
-# Prerequisites mapping based on the learning flow
+# Defines the prerequisites for each topic based on the learning flow.
 PREREQUISITES = {
     # TIER 1 - Foundation (no prerequisites)
     'MS01': [],
@@ -121,6 +127,9 @@ PREREQUISITES = {
 }
 
 class StudyAction(Enum):
+    """
+    Enum for the different study actions a student can take.
+    """
     LEARN = "learn"           # New topic (0-40%)
     PRACTICE = "practice"     # Building skills (40-65%)
     REINFORCE = "reinforce"   # Strengthening (65-80%)
@@ -129,6 +138,9 @@ class StudyAction(Enum):
 
 @dataclass
 class TopicStudyPlan:
+    """
+    Data class for a topic-specific study plan.
+    """
     day: int
     topic_code: str
     topic_name: str
@@ -143,6 +155,9 @@ class TopicStudyPlan:
 
 @dataclass
 class DailyStudyPlan:
+    """
+    Data class for a daily study plan.
+    """
     day: int
     date: datetime
     topics: List[TopicStudyPlan]
@@ -152,6 +167,9 @@ class DailyStudyPlan:
     tests: List[Dict[str, Any]]
 
 class AdaptiveStudyPlanEngine:
+    """
+    The main engine for generating and managing adaptive study plans.
+    """
     
     def __init__(self, db_manager, section_test_categories: Optional[List[str]] = None, max_section_tests_per_day: int = 2):
         self.db_manager = db_manager
@@ -175,15 +193,20 @@ class AdaptiveStudyPlanEngine:
         self.max_section_tests_per_day = max(1, min(2, int(max_section_tests_per_day)))
 
     def schedule_micro_practice_next_day(self, student_id: str, topic_code: str, new_mastery: float, minutes: int = 5) -> bool:
-        """Inject a 5-minute micro-practice for the topic into the next day's plan if available."""
+        """
+        Injects a short micro-practice session for a topic into the next day's plan.
+        This is typically used for topics where the student is near mastery.
+        """
         try:
             database = self.db_manager.client[self.db_manager.database_name]
             collection = database["studyPlans"]
 
+            # Find the student's study plan
             study_plan = collection.find_one({"student_id": student_id})
             if not study_plan:
                 return False
 
+            # Find the plan for the next day
             daily_plans = study_plan.get("daily_plans", [])
             if not daily_plans:
                 return False
@@ -202,7 +225,7 @@ class AdaptiveStudyPlanEngine:
             if not target_plan:
                 return False
 
-            # Build micro-practice topic entry
+            # Build the micro-practice topic entry
             topic_info = next((t for t in PERFECT_LEARNING_FLOW if t['code'] == topic_code), None)
             if not topic_info:
                 return False
@@ -220,13 +243,13 @@ class AdaptiveStudyPlanEngine:
                 "success_criteria": "Push to 90%+ accuracy"
             }
 
-            # Append micro-practice if not already present for this topic that day
+            # Append the micro-practice if it's not already there for the same topic
             if not any(t.get("topic_code") == topic_code and t.get("time_minutes", 0) <= minutes for t in target_plan.get("topics", [])):
                 target_plan.setdefault("topics", []).append(micro_topic)
-                # Increase total time for that day
+                # Increase the total time for that day
                 target_plan["total_time_minutes"] = target_plan.get("total_time_minutes", 0) + minutes
 
-                # Persist the modified daily_plans
+                # Persist the modified daily plans
                 collection.update_one(
                     {"_id": study_plan["_id"]},
                     {"$set": {"daily_plans": daily_plans}}
@@ -239,19 +262,21 @@ class AdaptiveStudyPlanEngine:
             return False
         
     def get_student_mastery(self, student_id: str) -> Dict[str, float]:
-        """Fetch current mastery levels from studentSummary collection"""
+        """
+        Fetches the current mastery levels for a student from the studentSummary collection.
+        """
         try:
             database = self.db_manager.client[self.db_manager.database_name]
             collection = database["studentSummary"]
             
-            # Get latest summary for student
+            # Get the latest summary for the student
             student_data = collection.find_one(
                 {"student_id": student_id},
                 sort=[("analysis_date", -1)]
             )
             
             if not student_data:
-                # Return zero mastery for all topics if no data found
+                # Return zero mastery for all topics if no data is found
                 return {topic['code']: 0.0 for topic in PERFECT_LEARNING_FLOW}
             
             mastery_data = student_data.get("complete_topic_mastery", {})
@@ -263,7 +288,9 @@ class AdaptiveStudyPlanEngine:
             return {topic['code']: 0.0 for topic in PERFECT_LEARNING_FLOW}
     
     def update_mastery_after_test(self, student_id: str, topic_code: str, new_mastery: float):
-        """Update mastery after a topic test"""
+        """
+        Updates a student's mastery for a topic after a test.
+        """
         try:
             database = self.db_manager.client[self.db_manager.database_name]
             collection = database["studentSummary"]
@@ -290,7 +317,9 @@ class AdaptiveStudyPlanEngine:
             print(f"Error updating mastery: {e}")
     
     def check_prerequisites_satisfied(self, topic_code: str, current_masteries: Dict[str, float]) -> bool:
-        """Check if all prerequisites for a topic are satisfied (>= 65%)"""
+        """
+        Checks if all prerequisites for a topic are satisfied (mastery >= 65%).
+        """
         prerequisites = PREREQUISITES.get(topic_code, [])
         
         for prereq in prerequisites:
@@ -300,14 +329,16 @@ class AdaptiveStudyPlanEngine:
         return True
     
     def get_next_available_topics(self, current_masteries: Dict[str, float]) -> List[str]:
-        """Get list of topics that are ready to study (prerequisites met, not mastered)"""
+        """
+        Gets a list of topics that are ready for the student to study (prerequisites met, not mastered).
+        """
         available_topics = []
         
         for topic in PERFECT_LEARNING_FLOW:
             topic_code = topic['code']
             current_mastery = current_masteries.get(topic_code, 0)
             
-            # Skip if already mastered
+            # Skip if the topic is already mastered
             if current_mastery >= self.mastery_threshold:
                 continue
             
@@ -318,7 +349,9 @@ class AdaptiveStudyPlanEngine:
         return available_topics
     
     def determine_study_action(self, mastery_percentage: float) -> StudyAction:
-        """Determine study action based on current mastery"""
+        """
+        Determines the appropriate study action based on the current mastery percentage.
+        """
         if mastery_percentage >= 80:
             return StudyAction.MASTERED
         elif mastery_percentage >= 65:
@@ -330,7 +363,10 @@ class AdaptiveStudyPlanEngine:
     
     def calculate_time_allocation(self, topics: List[str], current_masteries: Dict[str, float], 
                                 daily_time: int) -> Dict[str, int]:
-        """Allocate daily time across topics based on mastery levels"""
+        """
+        Allocates the daily study time across a list of topics based on their mastery levels.
+        Topics with lower mastery get more time.
+        """
         if not topics:
             return {}
         
@@ -338,7 +374,6 @@ class AdaptiveStudyPlanEngine:
         weights = {}
         for topic in topics:
             mastery = current_masteries.get(topic, 0)
-            # Higher weight for lower mastery
             weight = max(1, 100 - mastery)
             weights[topic] = weight
         
@@ -348,23 +383,25 @@ class AdaptiveStudyPlanEngine:
         time_allocation = {}
         remaining_time = daily_time
         
-        for topic in topics[:-1]:  # All but last topic
+        for topic in topics[:-1]:  # Allocate time for all but the last topic
             allocated_time = max(15, int((weights[topic] / total_weight) * daily_time))
             time_allocation[topic] = min(allocated_time, remaining_time - 15)
             remaining_time -= time_allocation[topic]
         
-        # Give remaining time to last topic
+        # Give the remaining time to the last topic
         if topics:
             time_allocation[topics[-1]] = max(15, remaining_time)
         
         return time_allocation
     
     def get_review_topics(self, current_masteries: Dict[str, float], day: int) -> List[str]:
-        """Get topics that need periodic review"""
+        """
+        Gets a list of topics that need periodic review based on their mastery level and the current day.
+        """
         review_topics = []
         
         for topic_code, mastery in current_masteries.items():
-            # Review mastered topics every 7 days, reinforced topics every 5 days
+            # Review mastered topics every 7 days, and reinforced topics every 5 days
             if mastery >= 80 and day % 7 == 0:
                 review_topics.append(topic_code)
             elif 65 <= mastery < 80 and day % 5 == 0:
@@ -375,19 +412,22 @@ class AdaptiveStudyPlanEngine:
     def ensure_comprehensive_coverage(self, daily_plans: List[DailyStudyPlan], 
                                     all_topics_to_cover: List[str], 
                                     current_masteries: Dict[str, float]) -> List[DailyStudyPlan]:
-        """Ensure all topics are covered in the study plan within existing timeline (no new days)."""
+        """
+        Ensures that all topics are covered in the study plan within the existing timeline.
+        This function adds any remaining topics to the least-loaded days in the plan.
+        """
         # Map scheduled topics to their assigned day
         assigned_day_by_topic: Dict[str, int] = {}
         for plan in daily_plans:
             for topic in plan.topics:
                 assigned_day_by_topic[topic.topic_code] = plan.day
 
-        # Determine remaining topics to schedule
+        # Determine the topics that are not yet scheduled
         remaining_topics = [t for t in all_topics_to_cover if t not in assigned_day_by_topic]
         if not remaining_topics:
             return daily_plans
 
-        # Helper to compute the earliest day a topic can be placed based on when its prerequisites are scheduled
+        # Helper to compute the earliest day a topic can be placed based on its prerequisites
         def earliest_day_for_topic(topic_code: str) -> int:
             prereqs = PREREQUISITES.get(topic_code, [])
             if not prereqs:
@@ -398,14 +438,15 @@ class AdaptiveStudyPlanEngine:
                 latest_prereq_day = max(latest_prereq_day, prereq_day)
             return latest_prereq_day
 
-        # Schedule remaining topics following the learning flow order
+        # Schedule the remaining topics following the learning flow order
         for flow_topic in PERFECT_LEARNING_FLOW:
             topic_code = flow_topic['code']
             if topic_code not in remaining_topics:
                 continue
 
-            # Find earliest eligible day and choose the least-loaded day from that point
+            # Find the earliest eligible day and choose the least-loaded day from that point
             earliest_day = earliest_day_for_topic(topic_code)
+
             # Exclude days that have full-length or section tests
             def is_test_day(p: DailyStudyPlan) -> bool:
                 try:
@@ -414,10 +455,11 @@ class AdaptiveStudyPlanEngine:
                     return False
             candidate_days = [p for p in daily_plans if p.day >= earliest_day and not is_test_day(p)]
             if not candidate_days:
-                # fallback to any non-test day
+                # Fallback to any non-test day if no eligible days are found
                 candidate_days = [p for p in daily_plans if not is_test_day(p)]
             target_plan = min(candidate_days, key=lambda p: len(p.topics)) if candidate_days else daily_plans[-1]
 
+            # Create a topic plan for the remaining topic
             current_mastery = current_masteries.get(topic_code, 0)
             study_action = self.determine_study_action(current_mastery)
             if current_mastery < 40:
@@ -452,13 +494,15 @@ class AdaptiveStudyPlanEngine:
     def generate_study_plan(self, student_id: str, total_days: int, 
                           daily_time_minutes: int = 60,
                           recent_topic_adjustments: Optional[Dict[str, Dict[str, Any]]] = None) -> Dict[str, Any]:
-        """Generate comprehensive study plan for specified duration ensuring all topics are covered"""
+        """
+        Generates a comprehensive study plan for a specified duration, ensuring all topics are covered.
+        """
         recent_topic_adjustments = recent_topic_adjustments or {}
         
-        # Get current mastery levels
+        # Get the student's current mastery levels
         current_masteries = self.get_student_mastery(student_id)
         
-        # Get all topics that need to be covered (not mastered)
+        # Get all topics that need to be covered (i.e., not mastered)
         all_topics_to_cover = []
         for topic in PERFECT_LEARNING_FLOW:
             topic_code = topic['code']
@@ -466,14 +510,13 @@ class AdaptiveStudyPlanEngine:
             if current_mastery < self.mastery_threshold:
                 all_topics_to_cover.append(topic_code)
         
-        # Calculate topics per day to ensure all are covered within the duration
+        # Calculate the number of topics to cover per day
         topics_per_day = max(1, math.ceil(len(all_topics_to_cover) / max(1, total_days)))
         
-        # Increase daily study time if needed to reasonably cover topics per day
-        # Assumption: at least ~20 minutes per topic for meaningful study
+        # Increase the daily study time if needed to reasonably cover the topics
         effective_daily_time_minutes = max(daily_time_minutes, topics_per_day * 20)
         
-        # Generate daily plans
+        # Generate the daily plans
         daily_plans = []
         start_date = datetime.now()
         topic_index = 0
@@ -481,10 +524,9 @@ class AdaptiveStudyPlanEngine:
         for day in range(1, total_days + 1):
             current_date = start_date + timedelta(days=day - 1)
 
-            # Decide tests for the day based on cadence
+            # Decide which tests to schedule for the day based on a cadence
             tests: List[Dict[str, Any]] = []
             is_full_length_day = (day % 15 == 0)
-            # Section test every 3 days (day % 3 == 0) and not on full-length days
             is_section_test_day = (day % 3 == 0) and not is_full_length_day
 
             if is_full_length_day:
@@ -494,11 +536,10 @@ class AdaptiveStudyPlanEngine:
                     "questions": self.full_length_questions
                 })
             elif is_section_test_day:
-                # schedule exactly 2 categories, alternating pairs across the cycle
-                # Example pairs day 3: [0,2]; day 6: [1,3]; day 9: [0,2]; day 12: [1,3] ...
+                # Schedule two section tests, alternating between pairs of categories
                 pair_a = [0, 2]
                 pair_b = [1, 3]
-                cycle_index = (day // 3) % 2  # 0 -> pair_a, 1 -> pair_b
+                cycle_index = (day // 3) % 2
                 indices = pair_a if cycle_index == 0 else pair_b
                 for idx in indices:
                     if idx < len(self.section_test_categories):
@@ -510,10 +551,10 @@ class AdaptiveStudyPlanEngine:
                             "questions": self.section_questions
                         })
 
-            # Get available topics for study (respecting prerequisites)
+            # Get the available topics for study, respecting prerequisites
             available_topics = self.get_next_available_topics(current_masteries)
             
-            # Ensure we cover all topics by prioritizing uncovered ones
+            # Prioritize uncovered topics to ensure all topics are covered
             daily_topics = []
             max_topics_today = topics_per_day
             if is_full_length_day:
@@ -521,21 +562,20 @@ class AdaptiveStudyPlanEngine:
             elif is_section_test_day:
                 max_topics_today = max(1, topics_per_day - 1)
             
-            # First, add topics that are available and not yet covered in the plan
+            # Add available and uncovered topics to the daily plan
             for topic_code in available_topics:
                 if topic_code in all_topics_to_cover and len(daily_topics) < max_topics_today:
                     daily_topics.append(topic_code)
-                    all_topics_to_cover.remove(topic_code)  # Mark as covered
+                    all_topics_to_cover.remove(topic_code)
             
-            # If we still have room and uncovered topics, try to add more
+            # If there's still room, add more uncovered topics
             if len(daily_topics) < max_topics_today and all_topics_to_cover:
-                # Try to add topics that might become available soon
                 for topic_code in all_topics_to_cover[:max_topics_today - len(daily_topics)]:
                     if len(daily_topics) < max_topics_today:
                         daily_topics.append(topic_code)
                         all_topics_to_cover.remove(topic_code)
             
-            # If still not enough topics, add review topics or mastered topics for reinforcement
+            # If there's still room, add review topics
             if len(daily_topics) < max_topics_today:
                 review_topics = self.get_review_topics(current_masteries, day)
                 for review_topic in review_topics:
@@ -545,8 +585,7 @@ class AdaptiveStudyPlanEngine:
             # Get review topics (separate from study topics)
             review_topics = self.get_review_topics(current_masteries, day)
             
-            # Allocate time using the effective daily minutes
-            # Ensure we always have at least 15 minutes per topic even after review time
+            # Allocate time for the daily topics
             min_required_for_topics = 15 * max(1, len(daily_topics))
             tests_time = sum(t.get("time_minutes", 0) for t in tests)
             study_time = effective_daily_time_minutes - (len(review_topics) * 10) - tests_time
@@ -554,14 +593,14 @@ class AdaptiveStudyPlanEngine:
                 study_time = min_required_for_topics
             time_allocation = self.calculate_time_allocation(daily_topics, current_masteries, study_time)
             
-            # Create topic study plans
+            # Create the topic study plans for the day
             topic_plans = []
             for topic_code in daily_topics:
                 topic_info = next(t for t in PERFECT_LEARNING_FLOW if t['code'] == topic_code)
                 current_mastery = current_masteries.get(topic_code, 0)
                 study_action = self.determine_study_action(current_mastery)
                 
-                # Set target mastery based on current level
+                # Set the target mastery based on the current level
                 if current_mastery < 40:
                     target_mastery = 50
                 elif current_mastery < 65:
@@ -571,9 +610,8 @@ class AdaptiveStudyPlanEngine:
                 else:
                     target_mastery = min(95, current_mastery + 5)
                 
-                # Calculate questions needed and target difficulty
+                # Calculate the number of questions and target difficulty
                 time_minutes = time_allocation.get(topic_code, 20)
-                # Base questions by mastery
                 if current_mastery < 40:
                     questions_recommended = 14
                     target_difficulty = "Easy"
@@ -587,7 +625,7 @@ class AdaptiveStudyPlanEngine:
                     questions_recommended = 8
                     target_difficulty = "Hard"
 
-                # Apply recent adjustments if topic was just assessed
+                # Apply recent adjustments if the topic was just assessed
                 if topic_code in recent_topic_adjustments:
                     adj = recent_topic_adjustments.get(topic_code, {})
                     q_delta = int(adj.get("questions_delta", 0) or 0)
@@ -596,7 +634,7 @@ class AdaptiveStudyPlanEngine:
                     if isinstance(force_diff, str) and force_diff in ("Easy", "Medium", "Hard"):
                         target_difficulty = force_diff
                 
-                # Define focus areas based on study action
+                # Define focus areas based on the study action
                 if study_action == StudyAction.LEARN:
                     focus_areas = ["Basic concepts", "Fundamental skills", "Simple examples"]
                     success_criteria = f"Understand basic concepts, achieve 50% accuracy"
@@ -625,7 +663,7 @@ class AdaptiveStudyPlanEngine:
                 )
                 topic_plans.append(topic_plan)
             
-            # Determine daily focus
+            # Determine the daily focus
             if is_full_length_day:
                 daily_focus = "Full-Length Assessment"
             elif is_section_test_day:
@@ -655,19 +693,16 @@ class AdaptiveStudyPlanEngine:
             )
             daily_plans.append(daily_plan)
             
-            # Simulate progress for planning (assume some improvement each day)
+            # Simulate progress for planning purposes
             for topic_code in daily_topics:
                 current_mastery = current_masteries.get(topic_code, 0)
                 if current_mastery < 80:
-                    # Simulate 2-5% improvement per day based on study action
                     improvement = 3 if study_action == StudyAction.LEARN else 4
                     current_masteries[topic_code] = min(85, current_mastery + improvement)
             
-            # Re-evaluate available topics after progress simulation
-            # This ensures that as topics are mastered, new topics become available
-            if day < total_days:  # Don't re-evaluate on the last day
+            # Re-evaluate available topics after the progress simulation
+            if day < total_days:
                 available_topics = self.get_next_available_topics(current_masteries)
-                # Add newly available topics back to the uncovered list if they're not in the plan yet
                 for topic_code in available_topics:
                     if topic_code not in all_topics_to_cover and topic_code not in [t.topic_code for t in topic_plans]:
                         all_topics_to_cover.append(topic_code)
@@ -677,7 +712,7 @@ class AdaptiveStudyPlanEngine:
         
         # Calculate completion statistics
         total_topics = len(PERFECT_LEARNING_FLOW)
-        final_masteries = self.get_student_mastery(student_id)  # Get real current mastery
+        final_masteries = self.get_student_mastery(student_id)
         mastered_topics = sum(1 for m in final_masteries.values() if m >= 80)
         
         # Calculate coverage statistics
@@ -689,9 +724,8 @@ class AdaptiveStudyPlanEngine:
         
         coverage_percentage = (len(topics_covered_in_plan) / total_topics) * 100
         
-        estimated_completion = []
-        
         # Estimate when each tier will be completed
+        estimated_completion = []
         for tier in range(1, 10):
             tier_topics = [t for t in PERFECT_LEARNING_FLOW if t['tier'] == tier]
             tier_mastery = sum(final_masteries.get(t['code'], 0) for t in tier_topics) / len(tier_topics)
@@ -753,14 +787,16 @@ class AdaptiveStudyPlanEngine:
         }
     
     def get_todays_plan(self, student_id: str) -> Dict[str, Any]:
-        """Get today's study plan for a student"""
+        """
+        Gets the study plan for the current day for a student.
+        """
         try:
             database = self.db_manager.client[self.db_manager.database_name]
             collection = database["studyPlans"]
             
             today = datetime.now().date()
             
-            # Find study plan that includes today
+            # Find a study plan that includes today
             study_plan = collection.find_one({
                 "student_id": student_id,
                 "daily_plans.date": {
@@ -770,10 +806,10 @@ class AdaptiveStudyPlanEngine:
             })
             
             if not study_plan:
-                # Generate a single day plan if no plan exists
+                # Generate a single-day plan if no plan exists
                 return self.generate_study_plan(student_id, 1)
             
-            # Find today's plan
+            # Find today's plan within the study plan
             todays_plan = None
             for daily_plan in study_plan.get("daily_plans", []):
                 plan_date = datetime.fromisoformat(daily_plan["date"]).date()
@@ -793,7 +829,9 @@ class AdaptiveStudyPlanEngine:
             return {"success": False, "error": str(e)}
     
     def save_study_plan(self, study_plan: Dict[str, Any]):
-        """Save study plan to database"""
+        """
+        Saves a study plan to the database.
+        """
         try:
             database = self.db_manager.client[self.db_manager.database_name]
             collection = database["studyPlans"]
@@ -801,7 +839,7 @@ class AdaptiveStudyPlanEngine:
             # Remove any existing plan for this student
             collection.delete_many({"student_id": study_plan["student_id"]})
             
-            # Insert new plan
+            # Insert the new plan
             result = collection.insert_one(study_plan)
             print(f"✅ Study plan saved for student: {study_plan['student_id']}")
             return str(result.inserted_id)
@@ -810,26 +848,26 @@ class AdaptiveStudyPlanEngine:
             print(f"Error saving study plan: {e}")
             return None
 
-# Example usage function
 def create_student_study_plan(student_id: str, total_days: int, db_manager, 
                             daily_time_minutes: int = 60,
                             section_test_categories: Optional[List[str]] = None,
                             max_section_tests_per_day: int = 1) -> Dict[str, Any]:
     """
-    Main function to create and save study plan for a student
+    Main function to create and save a study plan for a student.
     
-    This function ensures comprehensive coverage of all topics in the curriculum.
-    All topics will be included in the study plan, respecting prerequisites and
-    learning flow order.
+    This function ensures comprehensive coverage of all topics in the curriculum,
+    respecting prerequisites and the defined learning flow.
     
     Args:
-        student_id: Student identifier
-        total_days: Number of days for the study plan
-        db_manager: Database connection manager
-        daily_time_minutes: Daily study time in minutes (default 60)
+        student_id (str): The student's identifier.
+        total_days (int): The number of days for the study plan.
+        db_manager: The database connection manager.
+        daily_time_minutes (int, optional): The daily study time in minutes. Defaults to 60.
+        section_test_categories (Optional[List[str]], optional): The categories for section tests. Defaults to None.
+        max_section_tests_per_day (int, optional): The maximum number of section tests per day. Defaults to 1.
     
     Returns:
-        Complete study plan dictionary with guaranteed topic coverage
+        A dictionary representing the complete study plan.
     """
     
     engine = AdaptiveStudyPlanEngine(db_manager,
@@ -840,27 +878,26 @@ def create_student_study_plan(student_id: str, total_days: int, db_manager,
     study_plan = engine.generate_study_plan(student_id, total_days, daily_time_minutes)
     
     if study_plan["success"]:
-        # Save to database
+        # Save the study plan to the database
         plan_id = engine.save_study_plan(study_plan)
         study_plan["plan_id"] = plan_id
     
     return study_plan
 
-# Function to update mastery after tests
 def update_student_mastery(student_id: str, topic_code: str, new_mastery: float, db_manager):
     """
-    Update student's mastery after completing a topic test
+    Updates a student's mastery for a topic after they complete a topic test.
     
     Args:
-        student_id: Student identifier
-        topic_code: Topic code (e.g., 'MS01', 'QC03')
-        new_mastery: New mastery percentage (0-100)
-        db_manager: Database connection manager
+        student_id (str): The student's identifier.
+        topic_code (str): The code of the topic to update (e.g., 'MS01', 'QC03').
+        new_mastery (float): The new mastery percentage (0-100).
+        db_manager: The database connection manager.
     """
     engine = AdaptiveStudyPlanEngine(db_manager)
     engine.update_mastery_after_test(student_id, topic_code, new_mastery)
 
-    # If near-mastery (85-90% not reaching 90), schedule 5-minute micro practice next day
+    # If the student is near mastery, schedule a micro-practice for the next day
     scheduled_msg = ""
     if engine.near_mastery_min <= new_mastery < engine.near_mastery_target:
         did_schedule = engine.schedule_micro_practice_next_day(student_id, topic_code, new_mastery, minutes=5)
@@ -869,7 +906,7 @@ def update_student_mastery(student_id: str, topic_code: str, new_mastery: float,
         else:
             scheduled_msg = " Could not schedule micro-practice for tomorrow (no plan day found)."
     
-    # If mastery reaches 80%+, note mastery status
+    # If mastery reaches the threshold, note the achievement
     if new_mastery >= engine.mastery_threshold:
         print(f"🎉 Topic {topic_code} at/above mastery threshold. {new_mastery}%")
     

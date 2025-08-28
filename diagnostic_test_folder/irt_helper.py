@@ -1,3 +1,5 @@
+# diagnostic_test_folder/irt_helper.py
+
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -12,47 +14,57 @@ def generate_irt_parameters_for_item_bank(
     item_bank_collection: str = "item_bank"
 ) -> pd.DataFrame:
     """
-    Calculate IRT a and b parameters from CSV response data and store in item_bank 
-    with question_id and questionType from question_bank collection.
-    """
+    Calculates Item Response Theory (IRT) parameters (discrimination 'a' and difficulty 'b')
+    from a CSV file of student responses. The results are then stored in a MongoDB
+    collection, merging them with existing question data from a question bank.
 
+    Args:
+        csv_file_path (str): The path to the CSV file containing response data.
+        mongo_uri (str): The MongoDB connection URI.
+        db_name (str): The name of the database.
+        question_bank_collection (str, optional): The name of the collection containing question metadata.
+            Defaults to "question_bank".
+        item_bank_collection (str, optional): The name of the collection where the IRT parameters
+            will be stored. Defaults to "item_bank".
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the calculated IRT parameters and merged question data.
+    """
     try:
-        # --- MongoDB connection ---
+        # Establish a connection to the MongoDB database
         client = MongoClient(mongo_uri)
         db = client[db_name]
 
-        # --- Load CSV data ---
+        # Load the response data from the CSV file
         df = pd.read_csv(csv_file_path)
         
         if df.shape[1] < 2:
             raise ValueError("CSV must have at least one question column after question_id.")
 
-        # Get question IDs from first column and response data from remaining columns
-        question_ids = df.iloc[:, 0].tolist()  # q1, q2, q3, etc.
-        
-        # Response matrix: questions × students (transpose of CSV structure)
+        # Extract question IDs and the response matrix
+        question_ids = df.iloc[:, 0].tolist()
         response_matrix = df.iloc[:, 1:].to_numpy(dtype=float)
 
-        # --- IRT Parameter Estimation ---
+        # Estimate IRT parameters using a 2PL model, with fallbacks
         try:
-            # Try 2PL model first
+            # Attempt to use the 2-Parameter Logistic (2PL) model
             discrimination, difficulty = twopl_mml(response_matrix)
             print("✅ Used 2PL model for parameter estimation")
         except Exception as e:
             print(f"⚠️ 2PL failed ({e}), trying Rasch model...")
             try:
-                # Fall back to Rasch (1PL) model
+                # Fall back to the Rasch (1PL) model if 2PL fails
                 from girth import rasch_mml
                 difficulty = rasch_mml(response_matrix)
-                discrimination = np.ones(len(question_ids))  # All discrimination = 1.0
+                discrimination = np.ones(len(question_ids))
                 print("✅ Used Rasch model for parameter estimation")
             except Exception as e2:
                 print(f"⚠️ Rasch failed ({e2}), using fallback correlation method...")
-                # --- Fallback: Point-biserial correlation method ---
+                # Fall back to a point-biserial correlation method if Rasch also fails
                 discrimination, difficulty = [], []
                 
                 for j in range(len(question_ids)):
-                    # Calculate total score for each student (excluding current question)
+                    # Calculate total score for each student, excluding the current question
                     other_questions = np.delete(response_matrix, j, axis=0)
                     total_scores = np.nansum(other_questions, axis=0)
                     
@@ -76,10 +88,10 @@ def generate_irt_parameters_for_item_bank(
                     # Convert correlation to discrimination parameter
                     a_param = max(0.1, abs(corr) * 2)
                     
-                    # Calculate difficulty from proportion correct
+                    # Calculate difficulty from the proportion of correct answers
                     prop_correct = np.nanmean(question_scores)
-                    prop_correct = max(0.01, min(0.99, prop_correct))  # Bound between 0.01 and 0.99
-                    b_param = -np.log(prop_correct / (1 - prop_correct))  # Logit transformation
+                    prop_correct = max(0.01, min(0.99, prop_correct))
+                    b_param = -np.log(prop_correct / (1 - prop_correct))
                     
                     discrimination.append(a_param)
                     difficulty.append(b_param)
@@ -88,61 +100,58 @@ def generate_irt_parameters_for_item_bank(
                 difficulty = np.array(difficulty)
                 print("✅ Used fallback correlation method for parameter estimation")
 
-        # --- Ensure matching lengths ---
+        # Ensure that the lengths of all lists match
         min_len = min(len(question_ids), len(discrimination), len(difficulty))
         question_ids = question_ids[:min_len]
         discrimination = discrimination[:min_len]
         difficulty = difficulty[:min_len]
 
-        # --- Fetch ALL data from question_bank ---
+        # Fetch all data from the question bank for the relevant questions
         question_bank_data = {}
         question_docs = db[question_bank_collection].find(
             {"question_id": {"$in": question_ids}},
-            {"_id": 0}  # Exclude only MongoDB's _id field, get everything else
+            {"_id": 0}
         )
         
         for doc in question_docs:
             question_bank_data[doc["question_id"]] = doc
 
-        # --- Prepare results for item_bank ---
+        # Prepare the results to be inserted into the item_bank collection
         run_id = datetime.utcnow().isoformat()
         timestamp = datetime.utcnow()
         results = []
         
         for i in range(min_len):
             qid = question_ids[i]
-            # Get all question bank data for this question_id
             question_data = question_bank_data.get(qid, {})
             
-            # Create the final document with IRT parameters + all question bank data
+            # Create the final document with IRT parameters and all question bank data
             item_document = {
                 "run_id": run_id,
                 "timestamp": timestamp,
                 "question_id": qid,
                 "a_discrimination": round(float(discrimination[i]), 3),
                 "b_difficulty": round(float(difficulty[i]), 3),
-                **question_data  # Merge ALL fields from question_bank
+                **question_data
             }
             
             results.append(item_document)
 
-        # --- Store to item_bank collection ---
+        # Store the results in the item_bank collection, clearing any existing data
         item_collection = db[item_bank_collection]
-        
-        # Clear existing data and insert new results
         item_collection.delete_many({})
         item_collection.insert_many(results)
 
         print(f"✅ Successfully stored {len(results)} items in '{item_bank_collection}' collection")
         print(f"   Each item contains: question_id, a_discrimination, b_difficulty + ALL question_bank fields")
         
-        # Print summary of fields stored
+        # Print a summary of the fields stored
         if results:
             sample_keys = list(results[0].keys())
             print(f"   Total fields per item: {len(sample_keys)}")
             print(f"   Fields: {', '.join(sample_keys[:10])}{'...' if len(sample_keys) > 10 else ''}")
 
-        # Close MongoDB connection
+        # Close the MongoDB connection
         client.close()
 
         return pd.DataFrame(results)
