@@ -1,7 +1,13 @@
+# student_Dashboard/learning_flow.py
+
 from typing import Set, List
 
-# Canonical list of allowed study-plan topics (names) drawn from the curated flow
-# Only these topics will be considered when generating study plans
+# This file defines the learning flow for all topics, including verbal, reading comprehension, and math.
+# It provides a curated order of topics, a complete list of all topics with their codes, names, tiers, and sections,
+# and the prerequisites for each topic.
+
+# A set of all allowed topic names for study plans.
+# Only topics from this list will be considered when generating study plans.
 ALLOWED_TOPICS: Set[str] = {
     # Tier 0 - Verbal & Reading Comprehension
     "Abstract & Philosophical Concepts",
@@ -33,7 +39,7 @@ ALLOWED_TOPICS: Set[str] = {
     "Biography",
     "Technology",
 
-    # Math (existing)
+    # Math topics
     "Whole-number operations & order of operations",
     "Prime factors, GCF & LCM",
     "GCF & LCM Reasoning",
@@ -73,7 +79,7 @@ ALLOWED_TOPICS: Set[str] = {
     "Probability Comparisons",
 }
 
-# Curated topic order to guide coverage across the session
+# A curated order of topics to guide the learning path.
 CURATED_FLOW_ORDER: List[str] = [
     # Tier 0 - Verbal & Reading Comprehension
     # Synonyms - Vocabulary Building
@@ -157,7 +163,7 @@ CURATED_FLOW_ORDER: List[str] = [
     "Probability Comparisons",
 ]
 
-# Full catalog with codes, names, tiers, and sections
+# A complete catalog of all topics with their codes, names, tiers, and sections.
 COMPLETE_LEARNING_FLOW = [
     # TIER 0: VERBAL & READING COMPREHENSION (No Prerequisites)
     # Synonyms Section - Vocabulary Building
@@ -248,7 +254,7 @@ COMPLETE_LEARNING_FLOW = [
     {"code": "QC18", "name": "Probability Comparisons", "tier": 9, "section": "Math"},
 ]
 
-# Complete Prerequisites mapping (Tier 0 shown; other tiers can be added similarly)
+# A mapping of topic codes to their prerequisites.
 COMPLETE_PREREQUISITES = {
     # TIER 0 - Verbal & Reading Comprehension (NO PREREQUISITES)
     # All Synonyms skills

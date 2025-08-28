@@ -1,3 +1,5 @@
+# student_Dashboard/sprint.py
+
 import random
 import time
 import math
@@ -7,18 +9,21 @@ from typing import Optional, Dict, Any, List
 
 import numpy as np
 
-
 @dataclass
 class SprintConfig:
+    """
+    Configuration for the adaptive sprint.
+    """
     max_theta: float = 4.0
     min_theta: float = -4.0
     initial_theta: float = 0.0
 
 
 class SprintAdaptiveSystem:
-    """Adaptive sprint for a specific topic and fixed number of questions.
-
-    Uses the same database and item bank as the main CAT system but scoped to a single topic for N questions.
+    """
+    Manages an adaptive sprint for a specific topic and a fixed number of questions.
+    This class uses the same database and item bank as the main CAT system but is scoped
+    to a single topic for a set number of questions.
     """
 
     def __init__(
@@ -30,6 +35,17 @@ class SprintAdaptiveSystem:
         db_manager,
         config: SprintConfig | None = None,
     ) -> None:
+        """
+        Initializes the SprintAdaptiveSystem.
+
+        Args:
+            sprint_token (str): A unique token for the sprint session.
+            student_id (str): The ID of the student.
+            topic (str): The topic of the sprint.
+            num_questions (int): The number of questions in the sprint.
+            db_manager: The database manager instance.
+            config (SprintConfig, optional): Configuration for the sprint. Defaults to None.
+        """
         self.sprint_token = sprint_token
         self.student_id = student_id
         self.topic = topic
@@ -38,14 +54,15 @@ class SprintAdaptiveSystem:
         self.config = config or SprintConfig()
         self.difficulty_bias = 'medium'
 
-        # Collections (use same database)
+        # Initialize database collections
         self._db = getattr(self.db, "db", self.db)
         self.sessions = self._db["sprint_sessions"]
         self.responses = self._db["sprint_responses"]
 
-        # Load or initialize state
+        # Load or initialize the sprint state
         existing = self.sessions.find_one({"sprint_token": self.sprint_token})
         if existing:
+            # Load existing state
             self.current_theta = float(existing.get("current_theta", self.config.initial_theta))
             self.administered_question_ids = [qid for qid in existing.get("administered_question_ids", [])]
             self.current_question_id = existing.get("current_question_id")
@@ -56,7 +73,7 @@ class SprintAdaptiveSystem:
             self.difficulty_bias = existing.get("difficulty_bias", 'medium')
             self.start_theta = float(existing.get("start_theta", self.current_theta))
         else:
-            # Derive initial theta from latest studentSummary mastery for this topic
+            # Initialize new state
             self.current_theta = self._get_initial_theta_from_summary() if self.student_id else self.config.initial_theta
             self.administered_question_ids = []
             self.current_question_id = None
@@ -67,11 +84,14 @@ class SprintAdaptiveSystem:
             self.start_theta = self.current_theta
             self._persist_state(created=True)
 
-        # Cache item bank for the topic
+        # Cache the item bank for the topic
         self.item_bank_collection = self.db.item_bank_collection
         self._topic_items_cache = None
 
     def _persist_state(self, created: bool = False) -> None:
+        """
+        Saves the current state of the sprint to the database.
+        """
         doc = {
             "sprint_token": self.sprint_token,
             "student_id": self.student_id,
@@ -95,6 +115,9 @@ class SprintAdaptiveSystem:
             self.sessions.update_one({"sprint_token": self.sprint_token}, {"$set": doc}, upsert=True)
 
     def _get_topic_items(self) -> List[Dict[str, Any]]:
+        """
+        Retrieves and caches all items for the current topic from the item bank.
+        """
         if self._topic_items_cache is not None:
             return self._topic_items_cache
         cursor = self.item_bank_collection.find({"topic": self.topic})
@@ -122,22 +145,31 @@ class SprintAdaptiveSystem:
         return items
 
     def _calculate_item_information(self, theta: float, a_param: float, b_param: float) -> float:
+        """
+        Calculates the Fisher information of an item for a given theta.
+        """
         p = 1.0 / (1.0 + np.exp(-a_param * (theta - b_param)))
         return float((a_param ** 2) * p * (1.0 - p))
 
     def _select_next_item(self) -> Optional[Dict[str, Any]]:
+        """
+        Selects the next item for the sprint based on the current theta and difficulty bias.
+        """
         items = self._get_topic_items()
         if not items:
             return None
+
+        # Filter out already administered questions
         remaining = [it for it in items if it["question_id"] not in set(self.administered_question_ids)]
         if not remaining:
             return None
-        # Seed selection for variability
+
+        # Seed the random number generators for variability
         seed_value = hash(self.sprint_token + str(time.time())) % 10000
         random.seed(seed_value)
         np.random.seed(seed_value)
 
-        # Determine bias shift
+        # Determine the difficulty bias shift
         bias_shift = 0.0
         if self.difficulty_bias == 'easy':
             bias_shift = -0.5
@@ -145,7 +177,7 @@ class SprintAdaptiveSystem:
             bias_shift = 0.5
         target_theta = self.current_theta + bias_shift
 
-        # Score items by information and difficulty match around target_theta
+        # Score items based on information and difficulty match
         scored: List[tuple[float, Dict[str, Any]]] = []
         for it in remaining:
             info = self._calculate_item_information(target_theta, it["a_discrimination"], it["b_difficulty"])
@@ -153,21 +185,24 @@ class SprintAdaptiveSystem:
             score = 0.7 * info + 0.3 * match
             scored.append((score, it))
 
+        # Sort items by score and pick from the top-k to avoid local maxima
         scored.sort(key=lambda x: x[0], reverse=True)
-        # Pick top-k randomly to avoid local maxima
         top_k = scored[: min(5, len(scored))]
         return random.choice(top_k)[1] if top_k else None
 
     def _plan_next_k_questions(self, k: int) -> List[Dict[str, Any]]:
-        """Return a plan of the next k questions (IDs and metadata) without mutating state.
-        Uses current theta and difficulty bias for scoring. Does not assume any future responses.
+        """
+        Generates a plan of the next k questions without mutating the sprint state.
+        This is used to provide the client with a preview of the upcoming questions.
         """
         items = self._get_topic_items()
         if not items:
             return []
+
         planned: List[Dict[str, Any]] = []
         used_ids = set(self.administered_question_ids)
-        # Planning theta snapshot (no hypothetical updates)
+
+        # Determine the difficulty bias shift for planning
         bias_shift = 0.0
         if self.difficulty_bias == 'easy':
             bias_shift = -0.5
@@ -179,6 +214,8 @@ class SprintAdaptiveSystem:
             pool = [it for it in items if it["question_id"] not in used_ids]
             if not pool:
                 break
+
+            # Score and select the next question for the plan
             scored: List[tuple[float, Dict[str, Any]]] = []
             for it in pool:
                 info = self._calculate_item_information(target_theta, it["a_discrimination"], it["b_difficulty"])
@@ -200,6 +237,9 @@ class SprintAdaptiveSystem:
         return planned
 
     def _update_theta(self, old_theta: float, correct: bool, a_param: float, b_param: float) -> float:
+        """
+        Updates the student's ability estimate (theta) based on their response.
+        """
         base_adjustment = 0.3 * a_param / 2.0
         if correct:
             if old_theta < b_param:
@@ -214,53 +254,58 @@ class SprintAdaptiveSystem:
         return float(np.clip(old_theta + adjustment, self.config.min_theta, self.config.max_theta))
 
     def _get_initial_theta_from_summary(self) -> float:
-        """Map mastery percentage for this topic to an initial theta using logit mapping.
-        If not available, return 0.0.
+        """
+        Maps the mastery percentage for the topic to an initial theta using a logit mapping.
+        If no mastery data is available, it returns 0.0.
         """
         try:
-            # Find latest studentSummary for this student
+            # Find the latest student summary for this student
             coll = self._db["studentSummary"]
             summary = coll.find_one({"student_id": self.student_id}, sort=[("analysis_date", -1), ("created_at", -1), ("updated_at", -1)])
             if not summary:
                 return 0.0
+
+            # Get the mastery percentage for the topic
             topic_mastery = (summary.get("individual_mastery") or {}).get("topic_mastery") or {}
-            # topic_mastery keys are topic names; values contain mastery_percentage
             entry = topic_mastery.get(self.topic)
             if not entry:
                 return 0.0
             percent = entry.get("mastery_percentage")
             if percent is None:
                 return 0.0
-            # Convert percent to probability [0.01, 0.99]
+
+            # Convert the percentage to a probability and apply logit transformation
             p = max(0.01, min(0.99, float(percent) / 100.0))
-            # Logit mapping to theta; clip to configured bounds
             theta = math.log(p / (1.0 - p))
             return float(np.clip(theta, self.config.min_theta, self.config.max_theta))
         except Exception:
             return 0.0
 
     def get_next_question(self) -> Dict[str, Any]:
+        """
+        Gets the next question for the sprint.
+        """
         if self.complete:
             return {"session_complete": True, "message": "Sprint already complete"}
         if self.awaiting_response:
             return {"error": True, "message": "Awaiting response for the current question"}
 
+        # Select the next item
         item = self._select_next_item()
         if not item:
             self.complete = True
             self._persist_state()
             return {"session_complete": True, "message": "No more questions available for this topic"}
 
+        # Update the sprint state
         self.current_question_id = item["question_id"]
         self.awaiting_response = True
         self._persist_state()
 
-        # Prepare planned questions (including this one at head of plan) for client visibility
+        # Prepare a plan of the next questions for client visibility
         remaining_after_this = max(0, self.num_questions - self.total_answered)
         planned = self._plan_next_k_questions(remaining_after_this)
-        # Ensure first planned aligns with the selected item
         if planned and planned[0]["question_id"] != item["question_id"]:
-            # Replace first entry with the actual selected item but keep same structure
             planned = [{
                 "question_id": item["question_id"],
                 "a_discrimination": item["a_discrimination"],
@@ -282,6 +327,9 @@ class SprintAdaptiveSystem:
         }
 
     def submit_response(self, question_id: str, user_response: bool, question_number: int, selected_option: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Submits a response to a question in the sprint.
+        """
         if self.complete:
             return {"error": True, "message": "Sprint already complete"}
         if not self.awaiting_response:
@@ -289,17 +337,18 @@ class SprintAdaptiveSystem:
         if self.current_question_id != question_id:
             return {"error": True, "message": f"Expected response for {self.current_question_id}, got {question_id}"}
 
-        # Load item details
+        # Load item details from the database
         item_doc = self.db.get_item_by_question_id(question_id)
         if not item_doc:
             return {"error": True, "message": "Question not found"}
 
+        # Update the student's theta based on their response
         old_theta = self.current_theta
         new_theta = self._update_theta(old_theta, bool(user_response), float(item_doc.get("a_discrimination", 1.0)), float(item_doc.get("b_difficulty", 0.0)))
         theta_change = new_theta - old_theta
         self.current_theta = new_theta
 
-        # Save response
+        # Save the response to the database
         self.responses.insert_one({
             "sprint_token": self.sprint_token,
             "student_id": self.student_id,
@@ -317,7 +366,7 @@ class SprintAdaptiveSystem:
             "timestamp": datetime.now(),
         })
 
-        # Update in-memory and session state
+        # Update the in-memory and session state
         if bool(user_response):
             self.correct_count += 1
         self.total_answered += 1
@@ -328,6 +377,7 @@ class SprintAdaptiveSystem:
             self.complete = True
         self._persist_state()
 
+        # Finalize the sprint if it is complete
         if self.complete:
             try:
                 self._finalize_sprint()
@@ -350,6 +400,9 @@ class SprintAdaptiveSystem:
         }
 
     def get_status(self) -> Dict[str, Any]:
+        """
+        Gets the current status of the sprint.
+        """
         accuracy = (self.correct_count / self.total_answered) if self.total_answered > 0 else 0.0
         status = {
             "sprint_token": self.sprint_token,
@@ -370,7 +423,10 @@ class SprintAdaptiveSystem:
         return status
 
     def _recommend_next_sprint(self, accuracy: float) -> Dict[str, Any]:
-        # Simple heuristic: adjust starting theta and difficulty emphasis based on accuracy
+        """
+        Recommends the next sprint based on the student's performance.
+        """
+        # A simple heuristic to adjust the starting theta and difficulty emphasis based on accuracy
         if accuracy >= 0.85:
             next_start_theta = min(self.current_theta + 0.3, self.config.max_theta)
             mix = [{"difficulty": "Hard", "count": self.num_questions}]
@@ -396,6 +452,9 @@ class SprintAdaptiveSystem:
         }
 
     def _difficulty_bucket(self, b: float) -> str:
+        """
+        Categorizes a question's difficulty into a bucket (Easy, Medium, Hard).
+        """
         if b <= -0.5:
             return 'Easy'
         if b >= 0.5:
@@ -403,7 +462,10 @@ class SprintAdaptiveSystem:
         return 'Medium'
 
     def _assemble_summary(self, accuracy: float) -> Dict[str, Any]:
-        # Aggregate response difficulties
+        """
+        Assembles a summary of the sprint's performance.
+        """
+        # Aggregate the difficulties of the questions in the sprint
         agg = {"Easy": 0, "Medium": 0, "Hard": 0}
         for r in self.responses.find({"sprint_token": self.sprint_token}):
             bucket = self._difficulty_bucket(float(r.get("item_difficulty", 0.0)))
@@ -417,6 +479,9 @@ class SprintAdaptiveSystem:
         }
 
     def _finalize_sprint(self) -> None:
+        """
+        Finalizes the sprint by saving a summary of the run to the database.
+        """
         accuracy = (self.correct_count / self.total_answered) if self.total_answered > 0 else 0.0
         summary = self._assemble_summary(accuracy)
         next_plan = self._recommend_next_sprint(accuracy)
