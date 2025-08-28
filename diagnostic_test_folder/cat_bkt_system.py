@@ -1,11 +1,9 @@
 import numpy as np
 import pandas as pd
-import json
 import random
 import time
 from datetime import datetime
-from typing import Optional, Dict, List
-import pymongo
+from typing import Optional, List
 from pymongo import MongoClient
 import os
 from bson import ObjectId

@@ -239,4 +239,64 @@ class IndexGradeRequest(BaseModel):
     Request model for grading a test using an indexed list of answers.
     """
     test_id: str
-    answers: List[Optional[str]]
+    answers: List[Optional[str]]  
+
+class AdaptiveTestResponse(BaseModel):
+    success: bool
+    student_id: str
+    day: int
+    allowed: bool = True
+    reason: Optional[str] = None
+    topics: List[Dict[str, Any]] = []
+    note: Optional[str] = None
+    summary: Optional[Dict[str, Any]] = None
+    validation: Optional[Dict[str, Any]] = None
+
+class StudyPlanSummary(BaseModel):
+    student_id: str
+    plan_duration_days: Optional[int]
+    daily_time_minutes: Optional[int]
+    plan_start_date: Optional[str]
+    total_days: int
+    days_with_topics: int
+    days_with_tests: int
+    available_days: List[int]
+    progress_summary: Dict[str, Any]
+
+class DayDetailsResponse(BaseModel):
+    student_id: str
+    day: int
+    daily_plan: Dict[str, Any]
+    topic_test_allowed: bool
+    topic_test_restriction_reason: Optional[str]
+    topic_count: int
+    test_count: int
+    total_time_minutes: int
+
+class NextQuestionsRequest(BaseModel):
+    previous_answers: List[Dict[str, Any]]
+
+class NextQuestionsResponse(BaseModel):
+    success: bool
+    sprint_token: str
+    performance: float
+    previous_difficulty: str
+    current_difficulty: str
+    questions: List[Dict[str, Any]]
+    fetched_count: int
+
+class SkillQuestionsResponse(BaseModel):
+    success: bool
+    student_id: str
+    topic_code: str
+    topic_name: str
+    sprint_token: str
+    current_mastery: float
+    target_difficulty: str
+    starting_difficulty: str
+    questions_recommended: int
+    fetched_count: int
+    questions: List[Dict[str, Any]]
+    no_questions: bool
+    message: Optional[str] = None
+    adaptive_config: Optional[Dict[str, Any]] = None
