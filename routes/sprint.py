@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from app_context import get_db
+from models.models import AdaptiveTestResponse, DayDetailsResponse, GradeAnswersRequest, GradeAnswersResponse, NextQuestionsRequest, NextQuestionsResponse, SkillQuestionsResponse, StudyPlanSummary
 from student_Dashboard.sprint_logic import (
     TopicTestError,
     build_adaptive_topic_test,
@@ -19,83 +20,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/sprint", tags=["sprint"])
 
-# Pydantic models
-class AdaptiveTestResponse(BaseModel):
-    success: bool
-    student_id: str
-    day: int
-    allowed: bool = True
-    reason: Optional[str] = None
-    topics: List[Dict[str, Any]] = []
-    note: Optional[str] = None
-    summary: Optional[Dict[str, Any]] = None
-    validation: Optional[Dict[str, Any]] = None
 
-class StudyPlanSummary(BaseModel):
-    student_id: str
-    plan_duration_days: Optional[int]
-    daily_time_minutes: Optional[int]
-    plan_start_date: Optional[str]
-    total_days: int
-    days_with_topics: int
-    days_with_tests: int
-    available_days: List[int]
-    progress_summary: Dict[str, Any]
-
-class DayDetailsResponse(BaseModel):
-    student_id: str
-    day: int
-    daily_plan: Dict[str, Any]
-    topic_test_allowed: bool
-    topic_test_restriction_reason: Optional[str]
-    topic_count: int
-    test_count: int
-    total_time_minutes: int
-
-class AnswerRequest(BaseModel):
-    question_id: str
-    is_correct: bool
-    student_answer: Optional[str] = None
-    submitted_at: Optional[str] = None
-
-class GradeAnswersRequest(BaseModel):
-    answers: List[AnswerRequest]
-
-class GradeAnswersResponse(BaseModel):
-    success: bool
-    sprint_token: str
-    performance: float
-    total_questions: int
-    correct_questions: int
-    message: Optional[str] = None
-
-class NextQuestionsRequest(BaseModel):
-    previous_answers: List[Dict[str, Any]]  # Kept for backward compatibility
-
-class NextQuestionsResponse(BaseModel):
-    success: bool
-    sprint_token: str
-    performance: float
-    previous_difficulty: str
-    current_difficulty: str
-    questions: List[Dict[str, Any]]
-    fetched_count: int
-
-class SkillQuestionsResponse(BaseModel):
-    success: bool
-    student_id: str
-    topic_code: str
-    topic_name: str
-    sprint_token: str
-    current_mastery: float
-    target_difficulty: str
-    starting_difficulty: Optional[str | List[str]]  # Adjusted to match sprint_logic
-    questions_recommended: int
-    fetched_count: int
-    questions: List[Dict[str, Any]]
-    no_questions: bool
-    message: Optional[str] = None
-    adaptive_config: Optional[Dict[str, Any]] = None
 
 @router.post("/adaptive-topic-test/{student_id}/{day}", response_model=AdaptiveTestResponse)
 async def get_adaptive_topic_test(
