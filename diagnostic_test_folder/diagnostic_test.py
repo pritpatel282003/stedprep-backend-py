@@ -6,67 +6,7 @@ from sklearn.preprocessing import OneHotEncoder
 from fastapi import HTTPException
 from bson import ObjectId
 
-# Define the complete learning flow with prerequisites
-PERFECT_LEARNING_FLOW = [
-    # TIER 1: FOUNDATIONAL
-    {'code': 'MS01', 'name': 'Whole-number operations & order of operations', 'prerequisites': []},
-    {'code': 'MS02', 'name': 'Prime factors, GCF & LCM', 'prerequisites': ['MS01']},
-    {'code': 'QC03', 'name': 'GCF & LCM Reasoning', 'prerequisites': ['MS01', 'MS02']},
-    {'code': 'MS03', 'name': 'Integer operations & absolute value', 'prerequisites': ['MS01']},
-    {'code': 'QC01', 'name': 'Signed Integers & Absolute Value', 'prerequisites': ['MS01', 'MS03']},
-    
-    # TIER 2: NUMBER SYSTEMS
-    {'code': 'MS04', 'name': 'Fraction & mixed-number operations', 'prerequisites': ['MS01', 'MS02', 'MS03']},
-    {'code': 'QC02', 'name': 'Fractions & Mixed Numbers', 'prerequisites': ['MS01', 'MS04']},
-    {'code': 'MS05', 'name': 'Decimal & percent reasoning', 'prerequisites': ['MS01', 'MS04']},
-    {'code': 'QC04', 'name': 'Decimals & Percents', 'prerequisites': ['MS01', 'MS04', 'MS05']},
-    
-    # TIER 3: PROPORTIONAL REASONING
-    {'code': 'MS06', 'name': 'Ratios, unit rates, scale drawings & proportions', 'prerequisites': ['MS01', 'MS04', 'MS05']},
-    {'code': 'QC05', 'name': 'Ratios & Unit Rates', 'prerequisites': ['MS01', 'MS04', 'MS05', 'MS06']},
-    
-    # TIER 4: EXPONENTIAL
-    {'code': 'MS07', 'name': 'Exponents, squares & square roots', 'prerequisites': ['MS01', 'MS03']},
-    {'code': 'QC06', 'name': 'Exponents & Roots', 'prerequisites': ['MS01', 'MS03', 'MS07']},
-    {'code': 'QC19', 'name': 'Scientific Notation & Order of Magnitude', 'prerequisites': ['MS01', 'MS05', 'MS07']},
-    
-    # TIER 5: ALGEBRAIC BASIC
-    {'code': 'MS08', 'name': 'Evaluating & simplifying algebraic expressions', 'prerequisites': ['MS01', 'MS03', 'MS07']},
-    {'code': 'QC07a', 'name': 'Variable Expressions (Fixed Order)', 'prerequisites': ['MS01', 'MS03', 'MS08']},
-    {'code': 'QC07b', 'name': 'Variable Expressions (Indeterminate)', 'prerequisites': ['MS01', 'MS03', 'MS08', 'QC07a']},
-    
-    # TIER 6: ALGEBRAIC ADVANCED
-    {'code': 'MS09', 'name': 'One-variable linear equations & inequalities', 'prerequisites': ['MS01', 'MS03', 'MS08']},
-    {'code': 'MS10', 'name': 'Coordinate-plane basics', 'prerequisites': ['MS01', 'MS03']},
-    {'code': 'QC13', 'name': 'Coordinate Plane Slope & Distance', 'prerequisites': ['MS01', 'MS03', 'MS10']},
-    {'code': 'MS11', 'name': 'Patterns, sequences & basic function rules', 'prerequisites': ['MS01', 'MS08', 'MS09']},
-    {'code': 'QC08', 'name': 'Sequences & Patterns', 'prerequisites': ['MS01', 'MS08', 'MS11']},
-    
-    # TIER 7: GEOMETRIC
-    {'code': 'MS12', 'name': 'Angle relationships & polygon properties', 'prerequisites': ['MS01']},
-    {'code': 'QC09', 'name': 'Angle & Segment Relations', 'prerequisites': ['MS01', 'MS12']},
-    {'code': 'MS13', 'name': 'Perimeter, area & circumference of 2-D shapes', 'prerequisites': ['MS01', 'MS04', 'MS12']},
-    {'code': 'QC11', 'name': 'Area & Perimeter Reasoning', 'prerequisites': ['MS01', 'MS04', 'MS12', 'MS13']},
-    {'code': 'QC12', 'name': 'Circle Measures', 'prerequisites': ['MS01', 'MS05', 'MS13']},
-    {'code': 'QC10', 'name': 'Similar Figures & Scale', 'prerequisites': ['MS01', 'MS04', 'MS06', 'MS12']},
-    {'code': 'MS14', 'name': 'Surface area & volume of 3-D solids', 'prerequisites': ['MS01', 'MS04', 'MS13']},
-    {'code': 'QC16', 'name': 'Volume & Surface Area', 'prerequisites': ['MS01', 'MS04', 'MS13', 'MS14']},
-    
-    # TIER 8: MEASUREMENT
-    {'code': 'MS16', 'name': 'Measurement units, tools & conversions', 'prerequisites': ['MS01', 'MS04', 'MS05']},
-    {'code': 'QC14', 'name': 'Unit Conversion', 'prerequisites': ['MS01', 'MS04', 'MS05', 'MS16']},
-    {'code': 'QC15', 'name': 'Rate/Time/Distance & Density', 'prerequisites': ['MS01', 'MS04', 'MS05', 'MS06']},
-    
-    # TIER 9: DATA ANALYSIS
-    {'code': 'MS17', 'name': 'Data representation & statistics', 'prerequisites': ['MS01', 'MS04', 'MS05']},
-    {'code': 'QC17', 'name': 'Data Displays & Central Tendency', 'prerequisites': ['MS01', 'MS04', 'MS05', 'MS17']},
-    {'code': 'MS18', 'name': 'Probability of simple & compound events', 'prerequisites': ['MS01', 'MS04', 'MS05']},
-    {'code': 'QC18', 'name': 'Probability Comparisons', 'prerequisites': ['MS01', 'MS04', 'MS05', 'MS18']}
-]
-
-# Create a lookup dictionary for prerequisites
-TOPIC_PREREQUISITES = {topic['code']: topic['prerequisites'] for topic in PERFECT_LEARNING_FLOW}
-TOPIC_NAMES = {topic['code']: topic['name'] for topic in PERFECT_LEARNING_FLOW}
+from models.learning_flow import COMPLETE_LEARNING_FLOW, TOPIC_PREREQUISITES, TOPIC_NAMES
 
 def apply_prerequisite_logic(topic_mastery, minimum_implied_mastery=40):
     """
@@ -118,7 +58,7 @@ def apply_prerequisite_logic(topic_mastery, minimum_implied_mastery=40):
 def get_complete_topic_mastery_with_prerequisites():
     """Initialize all topics with zero mastery and prerequisite structure"""
     complete_mastery = {}
-    for topic in PERFECT_LEARNING_FLOW:
+    for topic in COMPLETE_LEARNING_FLOW:
         complete_mastery[topic['code']] = {
             "section": "Not Assessed",
             "topic": topic['name'],
@@ -510,6 +450,21 @@ def analyze_comprehensive_performance(session_token: str, db_manager):
                         "mastery_percentage": round(mastery_percent, 2),
                         "assessment_type": "assessed"
                     })
+                else:
+                    # This skill_code is not in the learning flow, add it as a new topic
+                    mastery_percent = (perf["correct"] / perf["total"]) * 100 if perf["total"] > 0 else 0
+                    complete_topic_mastery[skill_code] = {
+                        "section": perf["section"],
+                        "topic": perf["topic"],
+                        "correct_answers": perf["correct"],
+                        "total_questions": perf["total"],
+                        "mastery_percentage": round(mastery_percent, 2),
+                        "prerequisites": [],
+                        "assessment_type": "assessed",
+                        "implied_from": None,
+                        "note": "New topic discovered during diagnostic test.",
+                        "is_new": True
+                    }
         
         # Apply prerequisite logic
         complete_topic_mastery = apply_prerequisite_logic(complete_topic_mastery)

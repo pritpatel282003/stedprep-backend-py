@@ -10,121 +10,7 @@ from enum import Enum
 # It includes the definition of the learning flow, prerequisites, and the main
 # engine for creating, managing, and updating study plans.
 
-# Defines the perfect learning flow in a sequential order with tiers.
-PERFECT_LEARNING_FLOW = [
-    # TIER 1: FOUNDATIONAL
-    {'code': 'MS01', 'name': 'Whole-number operations & order of operations', 'tier': 1},
-    {'code': 'MS02', 'name': 'Prime factors, GCF & LCM', 'tier': 1},
-    {'code': 'QC03', 'name': 'GCF & LCM Reasoning', 'tier': 1},
-    {'code': 'MS03', 'name': 'Integer operations & absolute value', 'tier': 1},
-    {'code': 'QC01', 'name': 'Signed Integers & Absolute Value', 'tier': 1},
-    
-    # TIER 2: NUMBER SYSTEMS
-    {'code': 'MS04', 'name': 'Fraction & mixed-number operations', 'tier': 2},
-    {'code': 'QC02', 'name': 'Fractions & Mixed Numbers', 'tier': 2},
-    {'code': 'MS05', 'name': 'Decimal & percent reasoning', 'tier': 2},
-    {'code': 'QC04', 'name': 'Decimals & Percents', 'tier': 2},
-    
-    # TIER 3: PROPORTIONAL REASONING
-    {'code': 'MS06', 'name': 'Ratios, unit rates, scale drawings & proportions', 'tier': 3},
-    {'code': 'QC05', 'name': 'Ratios & Unit Rates', 'tier': 3},
-    
-    # TIER 4: EXPONENTIAL
-    {'code': 'MS07', 'name': 'Exponents, squares & square roots', 'tier': 4},
-    {'code': 'QC06', 'name': 'Exponents & Roots', 'tier': 4},
-    {'code': 'QC19', 'name': 'Scientific Notation & Order of Magnitude', 'tier': 4},
-    
-    # TIER 5: ALGEBRAIC BASIC
-    {'code': 'MS08', 'name': 'Evaluating & simplifying algebraic expressions', 'tier': 5},
-    {'code': 'QC07a', 'name': 'Variable Expressions (Fixed Order)', 'tier': 5},
-    {'code': 'QC07b', 'name': 'Variable Expressions (Indeterminate)', 'tier': 5},
-    
-    # TIER 6: ALGEBRAIC ADVANCED
-    {'code': 'MS09', 'name': 'One-variable linear equations & inequalities', 'tier': 6},
-    {'code': 'MS10', 'name': 'Coordinate-plane basics', 'tier': 6},
-    {'code': 'QC13', 'name': 'Coordinate Plane Slope & Distance', 'tier': 6},
-    {'code': 'MS11', 'name': 'Patterns, sequences & basic function rules', 'tier': 6},
-    {'code': 'QC08', 'name': 'Sequences & Patterns', 'tier': 6},
-    
-    # TIER 7: GEOMETRIC
-    {'code': 'MS12', 'name': 'Angle relationships & polygon properties', 'tier': 7},
-    {'code': 'QC09', 'name': 'Angle & Segment Relations', 'tier': 7},
-    {'code': 'MS13', 'name': 'Perimeter, area & circumference of 2-D shapes', 'tier': 7},
-    {'code': 'QC11', 'name': 'Area & Perimeter Reasoning', 'tier': 7},
-    {'code': 'QC12', 'name': 'Circle Measures', 'tier': 7},
-    {'code': 'QC10', 'name': 'Similar Figures & Scale', 'tier': 7},
-    {'code': 'MS14', 'name': 'Surface area & volume of 3-D solids', 'tier': 7},
-    {'code': 'QC16', 'name': 'Volume & Surface Area', 'tier': 7},
-    
-    # TIER 8: MEASUREMENT
-    {'code': 'MS16', 'name': 'Measurement units, tools & conversions', 'tier': 8},
-    {'code': 'QC14', 'name': 'Unit Conversion', 'tier': 8},
-    {'code': 'QC15', 'name': 'Rate/Time/Distance & Density', 'tier': 8},
-    
-    # TIER 9: DATA ANALYSIS
-    {'code': 'MS17', 'name': 'Data representation & statistics', 'tier': 9},
-    {'code': 'QC17', 'name': 'Data Displays & Central Tendency', 'tier': 9},
-    {'code': 'MS18', 'name': 'Probability of simple & compound events', 'tier': 9},
-    {'code': 'QC18', 'name': 'Probability Comparisons', 'tier': 9}
-]
-
-# Defines the prerequisites for each topic based on the learning flow.
-PREREQUISITES = {
-    # TIER 1 - Foundation (no prerequisites)
-    'MS01': [],
-    'MS02': ['MS01'],
-    'QC03': ['MS02'],
-    'MS03': ['MS01'],
-    'QC01': ['MS03'],
-    
-    # TIER 2 - Number Systems (requires Tier 1)
-    'MS04': ['MS02', 'MS03'],
-    'QC02': ['MS04'],
-    'MS05': ['MS04'],
-    'QC04': ['MS05'],
-    
-    # TIER 3 - Proportional (requires Tier 2)
-    'MS06': ['MS04', 'MS05'],
-    'QC05': ['MS06'],
-    
-    # TIER 4 - Exponential (requires Tier 1-3)
-    'MS07': ['MS03', 'MS04'],
-    'QC06': ['MS07'],
-    'QC19': ['MS07', 'QC06'],
-    
-    # TIER 5 - Algebraic Basic (requires Tier 4)
-    'MS08': ['MS07', 'QC06'],
-    'QC07a': ['MS08'],
-    'QC07b': ['QC07a'],
-    
-    # TIER 6 - Algebraic Advanced (requires Tier 5)
-    'MS09': ['MS08', 'QC07a'],
-    'MS10': ['MS09'],
-    'QC13': ['MS10'],
-    'MS11': ['MS08', 'MS09'],
-    'QC08': ['MS11'],
-    
-    # TIER 7 - Geometric (requires basic algebra)
-    'MS12': ['MS08'],
-    'QC09': ['MS12'],
-    'MS13': ['MS06', 'MS08'],  # Needs proportions and algebra
-    'QC11': ['MS13'],
-    'QC12': ['MS13', 'QC11'],
-    'QC10': ['MS13', 'QC11'],  # Similar figures need area concepts
-    'MS14': ['MS13', 'QC11'],  # 3D needs 2D mastery
-    'QC16': ['MS14'],
-    
-    # TIER 8 - Measurement (requires proportional reasoning)
-    'MS16': ['MS06'],
-    'QC14': ['MS16'],
-    'QC15': ['MS16', 'QC14'],
-    
-    # TIER 9 - Data Analysis (requires fractions and algebra)
-    'MS17': ['MS04', 'MS08'],
-    'QC17': ['MS17'],
-    'MS18': ['MS04', 'MS05'],  # Probability needs fractions/decimals
-    'QC18': ['MS18']
-}
+from models.learning_flow import COMPLETE_LEARNING_FLOW as PERFECT_LEARNING_FLOW, TOPIC_PREREQUISITES as PREREQUISITES
 
 class StudyAction(Enum):
     """
@@ -280,8 +166,13 @@ class AdaptiveStudyPlanEngine:
                 return {topic['code']: 0.0 for topic in PERFECT_LEARNING_FLOW}
             
             mastery_data = student_data.get("complete_topic_mastery", {})
-            return {topic['code']: mastery_data.get(topic['code'], {}).get('mastery_percentage', 0.0) 
-                   for topic in PERFECT_LEARNING_FLOW}
+
+            # Include all topics from the learning flow, and also any new topics from the summary
+            all_topic_codes = {topic['code'] for topic in PERFECT_LEARNING_FLOW}
+            all_topic_codes.update(mastery_data.keys())
+
+            return {code: mastery_data.get(code, {}).get('mastery_percentage', 0.0)
+                   for code in all_topic_codes}
             
         except Exception as e:
             print(f"Error fetching student mastery: {e}")
@@ -409,380 +300,116 @@ class AdaptiveStudyPlanEngine:
         
         return review_topics[:2]  # Limit to 2 review topics per day
     
-    def ensure_comprehensive_coverage(self, daily_plans: List[DailyStudyPlan], 
-                                    all_topics_to_cover: List[str], 
-                                    current_masteries: Dict[str, float]) -> List[DailyStudyPlan]:
-        """
-        Ensures that all topics are covered in the study plan within the existing timeline.
-        This function adds any remaining topics to the least-loaded days in the plan.
-        """
-        # Map scheduled topics to their assigned day
-        assigned_day_by_topic: Dict[str, int] = {}
-        for plan in daily_plans:
-            for topic in plan.topics:
-                assigned_day_by_topic[topic.topic_code] = plan.day
-
-        # Determine the topics that are not yet scheduled
-        remaining_topics = [t for t in all_topics_to_cover if t not in assigned_day_by_topic]
-        if not remaining_topics:
-            return daily_plans
-
-        # Helper to compute the earliest day a topic can be placed based on its prerequisites
-        def earliest_day_for_topic(topic_code: str) -> int:
-            prereqs = PREREQUISITES.get(topic_code, [])
-            if not prereqs:
-                return 1
-            latest_prereq_day = 1
-            for prereq in prereqs:
-                prereq_day = assigned_day_by_topic.get(prereq, 1)
-                latest_prereq_day = max(latest_prereq_day, prereq_day)
-            return latest_prereq_day
-
-        # Schedule the remaining topics following the learning flow order
-        for flow_topic in PERFECT_LEARNING_FLOW:
-            topic_code = flow_topic['code']
-            if topic_code not in remaining_topics:
-                continue
-
-            # Find the earliest eligible day and choose the least-loaded day from that point
-            earliest_day = earliest_day_for_topic(topic_code)
-
-            # Exclude days that have full-length or section tests
-            def is_test_day(p: DailyStudyPlan) -> bool:
-                try:
-                    return any(t.get("type") in ("full_length", "section") for t in getattr(p, "tests", []))
-                except Exception:
-                    return False
-            candidate_days = [p for p in daily_plans if p.day >= earliest_day and not is_test_day(p)]
-            if not candidate_days:
-                # Fallback to any non-test day if no eligible days are found
-                candidate_days = [p for p in daily_plans if not is_test_day(p)]
-            target_plan = min(candidate_days, key=lambda p: len(p.topics)) if candidate_days else daily_plans[-1]
-
-            # Create a topic plan for the remaining topic
-            current_mastery = current_masteries.get(topic_code, 0)
-            study_action = self.determine_study_action(current_mastery)
-            if current_mastery < 40:
-                target_mastery = 50
-            elif current_mastery < 65:
-                target_mastery = 70
-            elif current_mastery < 80:
-                target_mastery = 85
-            else:
-                target_mastery = min(95, current_mastery + 5)
-
-            topic_info = next(t for t in PERFECT_LEARNING_FLOW if t['code'] == topic_code)
-            topic_plan = TopicStudyPlan(
-                day=target_plan.day,
-                topic_code=topic_code,
-                topic_name=topic_info['name'],
-                current_mastery=current_mastery,
-                target_mastery=target_mastery,
-                target_difficulty="Medium",
-                study_action=study_action,
-                time_minutes=15,
-                questions_recommended=10,
-                focus_areas=["Basic concepts", "Fundamental skills"],
-                success_criteria=f"Understand basic concepts, achieve 50% accuracy"
-            )
-            target_plan.topics.append(topic_plan)
-            target_plan.total_time_minutes += 15
-            assigned_day_by_topic[topic_code] = target_plan.day
-        
-        return daily_plans
-    
-    def generate_study_plan(self, student_id: str, total_days: int, 
+    def generate_study_plan(self, student_id: str, total_days: int,
                           daily_time_minutes: int = 60,
                           recent_topic_adjustments: Optional[Dict[str, Dict[str, Any]]] = None) -> Dict[str, Any]:
         """
         Generates a comprehensive study plan for a specified duration, ensuring all topics are covered.
+        The plan is ordered by mastery (lowest to highest), with prerequisites handled correctly.
         """
         recent_topic_adjustments = recent_topic_adjustments or {}
-        
-        # Get the student's current mastery levels
+
+        # 1. Get student's mastery for all topics
         current_masteries = self.get_student_mastery(student_id)
+
+        # 2. Filter out mastered topics and sort by mastery (low to high)
+        unmastered_topics = {code: mastery for code, mastery in current_masteries.items() if mastery < self.mastery_threshold}
+        sorted_topics = sorted(unmastered_topics.items(), key=lambda item: item[1])
+
+        # 3. Create a final ordered list of topics, handling prerequisites
+        scheduled_topics = []
         
-        # Get all topics that need to be covered (i.e., not mastered)
-        all_topics_to_cover = []
-        for topic in PERFECT_LEARNING_FLOW:
-            topic_code = topic['code']
-            current_mastery = current_masteries.get(topic_code, 0)
-            if current_mastery < self.mastery_threshold:
-                all_topics_to_cover.append(topic_code)
+        def schedule_topic_and_prerequisites(topic_code):
+            if topic_code in scheduled_topics:
+                return
+
+            # Recursively schedule prerequisites first
+            for prereq_code in PREREQUISITES.get(topic_code, []):
+                schedule_topic_and_prerequisites(prereq_code)
+
+            # Add the topic itself if it's not already scheduled
+            if topic_code not in scheduled_topics:
+                scheduled_topics.append(topic_code)
+
+        for topic_code, mastery in sorted_topics:
+            schedule_topic_and_prerequisites(topic_code)
+
+        # 4. Distribute the scheduled topics across the total days
+        topics_per_day = max(1, math.ceil(len(scheduled_topics) / max(1, total_days)))
         
-        # Calculate the number of topics to cover per day
-        topics_per_day = max(1, math.ceil(len(all_topics_to_cover) / max(1, total_days)))
-        
-        # Increase the daily study time if needed to reasonably cover the topics
-        effective_daily_time_minutes = max(daily_time_minutes, topics_per_day * 20)
-        
-        # Generate the daily plans
+        # 5. Generate daily plans
         daily_plans = []
         start_date = datetime.now()
-        topic_index = 0
         
         for day in range(1, total_days + 1):
+            day_topics = scheduled_topics[(day - 1) * topics_per_day : day * topics_per_day]
+
+            if not day_topics:
+                continue
+
             current_date = start_date + timedelta(days=day - 1)
-
-            # Decide which tests to schedule for the day based on a cadence
-            tests: List[Dict[str, Any]] = []
-            is_full_length_day = (day % 15 == 0)
-            is_section_test_day = (day % 3 == 0) and not is_full_length_day
-
-            if is_full_length_day:
-                tests.append({
-                    "type": "full_length",
-                    "time_minutes": self.full_length_time_minutes,
-                    "questions": self.full_length_questions
-                })
-            elif is_section_test_day:
-                # Schedule two section tests, alternating between pairs of categories
-                pair_a = [0, 2]
-                pair_b = [1, 3]
-                cycle_index = (day // 3) % 2
-                indices = pair_a if cycle_index == 0 else pair_b
-                for idx in indices:
-                    if idx < len(self.section_test_categories):
-                        cat = self.section_test_categories[idx]
-                        tests.append({
-                            "type": "section",
-                            "category": cat,
-                            "time_minutes": self.section_test_time_minutes,
-                            "questions": self.section_questions
-                        })
-
-            # Get the available topics for study, respecting prerequisites
-            available_topics = self.get_next_available_topics(current_masteries)
-            
-            # Prioritize uncovered topics to ensure all topics are covered
-            daily_topics = []
-            max_topics_today = topics_per_day
-            if is_full_length_day:
-                max_topics_today = 0
-            elif is_section_test_day:
-                max_topics_today = max(1, topics_per_day - 1)
-            
-            # Add available and uncovered topics to the daily plan
-            for topic_code in available_topics:
-                if topic_code in all_topics_to_cover and len(daily_topics) < max_topics_today:
-                    daily_topics.append(topic_code)
-                    all_topics_to_cover.remove(topic_code)
-            
-            # If there's still room, add more uncovered topics
-            if len(daily_topics) < max_topics_today and all_topics_to_cover:
-                for topic_code in all_topics_to_cover[:max_topics_today - len(daily_topics)]:
-                    if len(daily_topics) < max_topics_today:
-                        daily_topics.append(topic_code)
-                        all_topics_to_cover.remove(topic_code)
-            
-            # If there's still room, add review topics
-            if len(daily_topics) < max_topics_today:
-                review_topics = self.get_review_topics(current_masteries, day)
-                for review_topic in review_topics:
-                    if len(daily_topics) < max_topics_today:
-                        daily_topics.append(review_topic)
-            
-            # Get review topics (separate from study topics)
-            review_topics = self.get_review_topics(current_masteries, day)
-            
-            # Allocate time for the daily topics
-            min_required_for_topics = 15 * max(1, len(daily_topics))
-            tests_time = sum(t.get("time_minutes", 0) for t in tests)
-            study_time = effective_daily_time_minutes - (len(review_topics) * 10) - tests_time
-            if study_time < min_required_for_topics:
-                study_time = min_required_for_topics
-            time_allocation = self.calculate_time_allocation(daily_topics, current_masteries, study_time)
-            
-            # Create the topic study plans for the day
             topic_plans = []
-            for topic_code in daily_topics:
-                topic_info = next(t for t in PERFECT_LEARNING_FLOW if t['code'] == topic_code)
+
+            time_allocation = self.calculate_time_allocation(day_topics, current_masteries, daily_time_minutes)
+
+            for topic_code in day_topics:
+                topic_info = next((t for t in PERFECT_LEARNING_FLOW if t['code'] == topic_code), None)
+                if not topic_info:
+                    topic_info = {'name': 'Unknown Topic'} # Handle new topics
+
                 current_mastery = current_masteries.get(topic_code, 0)
                 study_action = self.determine_study_action(current_mastery)
                 
-                # Set the target mastery based on the current level
-                if current_mastery < 40:
-                    target_mastery = 50
-                elif current_mastery < 65:
-                    target_mastery = 70
-                elif current_mastery < 80:
-                    target_mastery = 85
-                else:
-                    target_mastery = min(95, current_mastery + 5)
+                # Set target mastery
+                if current_mastery < 40: target_mastery = 50
+                elif current_mastery < 65: target_mastery = 70
+                elif current_mastery < 80: target_mastery = 85
+                else: target_mastery = min(95, current_mastery + 5)
                 
-                # Calculate the number of questions and target difficulty
                 time_minutes = time_allocation.get(topic_code, 20)
-                if current_mastery < 40:
-                    questions_recommended = 14
-                    target_difficulty = "Easy"
-                elif current_mastery < 65:
-                    questions_recommended = 12
-                    target_difficulty = "Medium"
-                elif current_mastery < 80:
-                    questions_recommended = 10
-                    target_difficulty = "Medium"
-                else:
-                    questions_recommended = 8
-                    target_difficulty = "Hard"
-
-                # Apply recent adjustments if the topic was just assessed
-                if topic_code in recent_topic_adjustments:
-                    adj = recent_topic_adjustments.get(topic_code, {})
-                    q_delta = int(adj.get("questions_delta", 0) or 0)
-                    force_diff = adj.get("force_difficulty")
-                    questions_recommended = max(5, min(20, questions_recommended + q_delta))
-                    if isinstance(force_diff, str) and force_diff in ("Easy", "Medium", "Hard"):
-                        target_difficulty = force_diff
                 
-                # Define focus areas based on the study action
                 if study_action == StudyAction.LEARN:
-                    focus_areas = ["Basic concepts", "Fundamental skills", "Simple examples"]
-                    success_criteria = f"Understand basic concepts, achieve 50% accuracy"
+                    focus_areas = ["Basic concepts", "Fundamental skills"]
+                    success_criteria = "Achieve 50% accuracy"
                 elif study_action == StudyAction.PRACTICE:
-                    focus_areas = ["Skill building", "Practice problems", "Pattern recognition"]
-                    success_criteria = f"Build fluency, achieve 70% accuracy"
-                elif study_action == StudyAction.REINFORCE:
-                    focus_areas = ["Advanced problems", "Edge cases", "Speed improvement"]
-                    success_criteria = f"Strengthen skills, achieve 85% accuracy"
+                    focus_areas = ["Skill building", "Practice problems"]
+                    success_criteria = "Achieve 70% accuracy"
                 else:
-                    focus_areas = ["Challenging problems", "Applications", "Connections"]
-                    success_criteria = f"Maintain mastery, 90%+ accuracy"
-                
-                topic_plan = TopicStudyPlan(
+                    focus_areas = ["Advanced problems", "Edge cases"]
+                    success_criteria = "Achieve 85% accuracy"
+
+                topic_plans.append(TopicStudyPlan(
                     day=day,
                     topic_code=topic_code,
                     topic_name=topic_info['name'],
                     current_mastery=current_mastery,
                     target_mastery=target_mastery,
-                    target_difficulty=target_difficulty,
+                    target_difficulty="Medium",
                     study_action=study_action,
                     time_minutes=time_minutes,
-                    questions_recommended=questions_recommended,
+                    questions_recommended=10,
                     focus_areas=focus_areas,
                     success_criteria=success_criteria
-                )
-                topic_plans.append(topic_plan)
-            
-            # Determine the daily focus
-            if is_full_length_day:
-                daily_focus = "Full-Length Assessment"
-            elif is_section_test_day:
-                daily_focus = "Section Assessment + Study"
-            else:
-                if topic_plans:
-                    primary_action = topic_plans[0].study_action
-                    if primary_action == StudyAction.LEARN:
-                        daily_focus = "Learning New Concepts"
-                    elif primary_action == StudyAction.PRACTICE:
-                        daily_focus = "Skill Building & Practice"
-                    elif primary_action == StudyAction.REINFORCE:
-                        daily_focus = "Strengthening & Mastery"
-                    else:
-                        daily_focus = "Review & Maintenance"
-                else:
-                    daily_focus = "Comprehensive Review"
-            
+                ))
+
             daily_plan = DailyStudyPlan(
                 day=day,
                 date=current_date,
                 topics=topic_plans,
-                total_time_minutes=sum(t.time_minutes for t in topic_plans) + len(review_topics) * 10 + tests_time,
-                daily_focus=daily_focus,
-                review_topics=review_topics,
-                tests=tests
+                total_time_minutes=sum(tp.time_minutes for tp in topic_plans),
+                daily_focus="Focused Study",
+                review_topics=[],
+                tests=[]
             )
             daily_plans.append(daily_plan)
-            
-            # Simulate progress for planning purposes
-            for topic_code in daily_topics:
-                current_mastery = current_masteries.get(topic_code, 0)
-                if current_mastery < 80:
-                    improvement = 3 if study_action == StudyAction.LEARN else 4
-                    current_masteries[topic_code] = min(85, current_mastery + improvement)
-            
-            # Re-evaluate available topics after the progress simulation
-            if day < total_days:
-                available_topics = self.get_next_available_topics(current_masteries)
-                for topic_code in available_topics:
-                    if topic_code not in all_topics_to_cover and topic_code not in [t.topic_code for t in topic_plans]:
-                        all_topics_to_cover.append(topic_code)
-        
-        # Ensure all topics are covered in the plan
-        daily_plans = self.ensure_comprehensive_coverage(daily_plans, all_topics_to_cover, current_masteries)
-        
-        # Calculate completion statistics
-        total_topics = len(PERFECT_LEARNING_FLOW)
-        final_masteries = self.get_student_mastery(student_id)
-        mastered_topics = sum(1 for m in final_masteries.values() if m >= 80)
-        
-        # Calculate coverage statistics
-        topics_covered_in_plan = []
-        for plan in daily_plans:
-            for topic in plan.topics:
-                if topic.topic_code not in topics_covered_in_plan:
-                    topics_covered_in_plan.append(topic.topic_code)
-        
-        coverage_percentage = (len(topics_covered_in_plan) / total_topics) * 100
-        
-        # Estimate when each tier will be completed
-        estimated_completion = []
-        for tier in range(1, 10):
-            tier_topics = [t for t in PERFECT_LEARNING_FLOW if t['tier'] == tier]
-            tier_mastery = sum(final_masteries.get(t['code'], 0) for t in tier_topics) / len(tier_topics)
-            
-            if tier_mastery >= 80:
-                estimated_days = 0
-            elif tier_mastery >= 60:
-                estimated_days = len(tier_topics) * 3
-            else:
-                estimated_days = len(tier_topics) * 5
-            
-            estimated_completion.append({
-                "tier": tier,
-                "tier_name": f"Tier {tier}",
-                "topics_count": len(tier_topics),
-                "current_avg_mastery": round(tier_mastery, 1),
-                "estimated_completion_days": estimated_days
-            })
-        
+
         return {
             "success": True,
             "student_id": student_id,
             "plan_duration_days": total_days,
-            "daily_time_minutes": effective_daily_time_minutes,
+            "daily_time_minutes": daily_time_minutes,
             "plan_start_date": start_date.isoformat(),
-            "daily_plans": [
-                {
-                    "day": plan.day,
-                    "date": plan.date.isoformat(),
-                    "daily_focus": plan.daily_focus,
-                    "total_time_minutes": plan.total_time_minutes,
-                    "tests": plan.tests,
-                    "topics": [
-                        {
-                            "topic_code": topic.topic_code,
-                            "topic_name": topic.topic_name,
-                            "current_mastery": topic.current_mastery,
-                            "target_mastery": topic.target_mastery,
-                            "target_difficulty": topic.target_difficulty,
-                            "study_action": topic.study_action.value,
-                            "time_minutes": topic.time_minutes,
-                            "questions_recommended": topic.questions_recommended,
-                            "focus_areas": topic.focus_areas,
-                            "success_criteria": topic.success_criteria
-                        } for topic in plan.topics
-                    ],
-                    "review_topics": plan.review_topics
-                } for plan in daily_plans
-            ],
-            "progress_summary": {
-                "total_topics": total_topics,
-                "currently_mastered": mastered_topics,
-                "mastery_percentage": round((mastered_topics / total_topics) * 100, 1),
-                "topics_covered_in_plan": len(topics_covered_in_plan),
-                "coverage_percentage": round(coverage_percentage, 1),
-                "estimated_tier_completion": estimated_completion
-            },
+            "daily_plans": [dp.__dict__ for dp in daily_plans],
             "created_at": datetime.now().isoformat()
         }
     
